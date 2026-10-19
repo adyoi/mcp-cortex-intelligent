@@ -92,7 +92,7 @@ Add to `~/.config/opencode/opencode.json`:
 }
 ```
 
-## Tools (54)
+## Tools (55)
 
 | Group | Count | Tools |
 |---|---|---|
@@ -104,7 +104,7 @@ Add to `~/.config/opencode/opencode.json`:
 | Cognitive | 3 | self_critique, score_compliance, run_verification |
 | Decision | 2 | decision_classify, decision_health |
 | Procedure | 5 | get_procedure, list_procedures, ingest_procedure, retrieve_exemplars, ingest_exemplar |
-| Plan & Task | 13 | init_plan, read_plan, update_plan_section, init_task, task_create, task_list, task_get, task_start, task_done, task_block, task_delete, task_sync_md, task_summary |
+| Plan & Task | 14 | init_plan, read_plan, update_plan_section, init_task, task_create, task_list, task_get, task_start, task_done, task_block, task_delete, task_update, task_sync_md, task_summary |
 
 ## Workflow
 

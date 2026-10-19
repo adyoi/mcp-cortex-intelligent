@@ -618,18 +618,18 @@ server.registerTool(
 
 server.registerTool(
   "get_guardrails",
-  { description: "Get procedure guardrails (anti-blunder) for a task/model.", inputSchema: { task: z.string().min(1), model: z.string().optional() } },
-  async (args: { task: string; model?: string }) => {
-    const m = args.model ?? detectModel({ env: process.env });
+  { description: "Get procedure guardrails (anti-blunder) for a task/model.", inputSchema: { task: z.string().min(1), model: z.string().optional(), project_root: z.string().optional() } },
+  async (args: { task: string; model?: string; project_root?: string }) => {
+    const m = args.model ?? detectModel({ env: process.env, projectRoot: args.project_root });
     return { content: [{ type: "text", text: getGuardrails(m, args.task) }] };
   }
 );
 
 server.registerTool(
   "model_decision",
-  { description: "Internal model decision: tier/risk/route/needsVerify.", inputSchema: { model: z.string().optional(), task: z.string().min(1), files: z.array(z.string()).optional() } },
-  async (args: { model?: string; task: string; files?: string[] }) => {
-    const m = args.model ?? detectModel({ env: process.env });
+  { description: "Internal model decision: tier/risk/route/needsVerify.", inputSchema: { model: z.string().optional(), task: z.string().min(1), files: z.array(z.string()).optional(), project_root: z.string().optional() } },
+  async (args: { model?: string; task: string; files?: string[]; project_root?: string }) => {
+    const m = args.model ?? detectModel({ env: process.env, projectRoot: args.project_root });
     return { content: [{ type: "text", text: JSON.stringify(modelDecision(m, args.task, args.files ?? [])) }] };
   }
 );
@@ -737,9 +737,9 @@ server.registerTool(
 
 server.registerTool(
   "cognitive_status",
-  { description: "Cognitive status summary for the current session.", inputSchema: {} },
-  async () => {
-    const model = detectModel({ env: process.env });
+  { description: "Cognitive status summary for the current session.", inputSchema: { project_root: z.string().optional() } },
+  async (args: { project_root?: string }) => {
+    const model = detectModel({ env: process.env, projectRoot: args.project_root });
     const ts = (await import("../plantask/manager.js")).taskSummary();
     return { content: [{ type: "text", text: JSON.stringify({ model, tier: tierOf(model), status: "ok", tasks: ts }) }] };
   }
@@ -781,6 +781,9 @@ server.registerTool("task_block", { description: "Set task status to blocked wit
 
 server.registerTool("task_delete", { description: "Delete a task.", inputSchema: { id: z.string().min(1) } },
   async (args: { id: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskDelete(args.id)) }] }));
+
+server.registerTool("task_update", { description: "Update task title/priority/owner/plan_ref/notes.", inputSchema: { id: z.string().min(1), title: z.string().optional(), priority: z.number().int().optional(), owner: z.string().optional(), plan_ref: z.string().optional(), notes: z.string().optional() } },
+  async (args: { id: string; title?: string; priority?: number; owner?: string; plan_ref?: string; notes?: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskUpdate(args.id, { title: args.title, priority: args.priority, owner: args.owner, plan_ref: args.plan_ref, notes: args.notes })) }] }));
 
 server.registerTool("task_sync_md", { description: "Sync TASK.md from DB.", inputSchema: { project_root: z.string().min(1) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskSyncMd(args.project_root)) }] }));

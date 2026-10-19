@@ -84,6 +84,18 @@ export function taskDone(id: string): { ok: boolean } {
   return { ok: r.changes > 0 };
 }
 
+export function taskUpdate(id: string, patch: { title?: string; priority?: number; owner?: string; plan_ref?: string; notes?: string }): { ok: boolean } {
+  const t = taskGet(id);
+  if (!t) return { ok: false };
+  const title = patch.title ?? t.title;
+  const priority = patch.priority ?? t.priority;
+  const owner = patch.owner ?? t.owner;
+  const plan_ref = patch.plan_ref ?? t.plan_ref;
+  const notes = patch.notes ?? t.notes;
+  const r = db.getDB().prepare("UPDATE tasks SET title=?, priority=?, owner=?, plan_ref=?, notes=?, updated_at=? WHERE id=?").run(title, priority, owner, plan_ref, notes, Date.now(), id);
+  return { ok: r.changes > 0 };
+}
+
 export function taskBlock(id: string, reason: string): { ok: boolean } {
   const t = taskGet(id);
   const notes = t ? `${t.notes || ""}\nBlocked: ${reason}`.trim() : `Blocked: ${reason}`;

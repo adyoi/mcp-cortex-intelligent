@@ -423,10 +423,10 @@ async function main() {
       "self_critique", "score_compliance", "run_verification",
       "decision_classify", "decision_health", "cognitive_status",
       "init_plan", "read_plan", "update_plan_section", "init_task", "task_create", "task_list",
-      "task_get", "task_start", "task_done", "task_block", "task_delete", "task_sync_md", "task_summary",
+      "task_get", "task_start", "task_done", "task_block", "task_delete", "task_update", "task_sync_md", "task_summary",
     ];
     check("all tools registered", expected.every((t) => toolNames.includes(t)), `missing: ${expected.filter((t) => !toolNames.includes(t))}`);
-    check("exactly 54 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
+    check("exactly 55 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
 
     const sys = await client.callTool({ name: "system_stats", arguments: {} });
     const sysText = toolText(sys);
@@ -523,7 +523,7 @@ async function main() {
     /* Cortex tools smoke */
     const cTools = await client.listTools();
     const cNames = cTools.tools.map((t) => t.name);
-    check("cortex tools registered (>= 54)", cNames.length >= 54, String(cNames.length));
+    check("cortex tools registered (>= 55)", cNames.length >= 55, String(cNames.length));
     async function ccall(name: string, args: Record<string, unknown> = {}) {
       try { const r = await client.callTool({ name, arguments: args }); return toolText(r); }
       catch (e) { return "ERR:" + (e as Error).message; }

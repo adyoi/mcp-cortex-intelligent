@@ -1,0 +1,42 @@
+name: Publish to npm
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Type-check + build
+        run: npm run build
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Publish
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          if npm view "mcp-cortex-intelligent@${VER}" version >/dev/null 2>&1; then
+            echo "mcp-cortex-intelligent@${VER} is already on the registry; skipping publish."
+          else
+            TAG_ARG=""
+            LATEST=$(npm view mcp-cortex-intelligent version 2>/dev/null || true)
+            if [ -n "$LATEST" ] && [ "$(printf '%s\n%s' "$VER" "$LATEST" | sort -V | head -n1)" = "$VER" ]; then
+              echo "Publishing ${VER} as a historical backfill below latest (${LATEST})."
+              TAG_ARG="--tag historical"
+            fi
+            npm publish --provenance --access public $TAG_ARG
+          fi

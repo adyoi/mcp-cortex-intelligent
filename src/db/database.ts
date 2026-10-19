@@ -60,6 +60,7 @@ function migrate(db: DatabaseSync) {
   db.exec("BEGIN IMMEDIATE;");
   try {
     createSchema(db);
+    seedModelProfiles(db);
     db.exec("COMMIT;");
   } catch (e) {
     try {
@@ -240,6 +241,18 @@ function createSchema(db: DatabaseSync) {
     // create AND backfill, otherwise existing chunks silently lose keyword search
     // forever — the next boot sees "trigram" and would skip the rebuild.
     rebuildFts(db);
+  }
+}
+
+function seedModelProfiles(db: DatabaseSync): void {
+  const seeds = [
+    { id: "weak-default", model: "haiku", tier: "weak", caps: ["basic"], blunders: ["edit without read", "skip tests"] },
+    { id: "medium-default", model: "sonnet", tier: "medium", caps: ["code", "tools"], blunders: ["skip verification"] },
+    { id: "strong-default", model: "opus", tier: "strong", caps: ["code", "tools", "long_context"], blunders: [] },
+  ];
+  const stmt = db.prepare("INSERT OR IGNORE INTO model_profiles (id, provider, model, tier, capabilities, blunder_patterns, updated_at) VALUES (?,?,?,?,?,?,?)");
+  for (const s of seeds) {
+    stmt.run(s.id, "internal", s.model, s.tier, JSON.stringify(s.caps), JSON.stringify(s.blunders), Date.now());
   }
 }
 

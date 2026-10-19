@@ -2,6 +2,21 @@
 
 All notable changes to mcp-cortex-intelligent are documented here.
 
+## [Unreleased]
+
+### Added
+- `task_update` tool (update title/priority/owner/plan_ref/notes) — suite now 55 tools.
+- `/cortex` slash command for full session initialization, plus 12 helper slash commands
+  (`/bootstrap`, `/guardrails`, `/critique`, `/verify`, `/tasks`, `/task-new`, `/task-done`,
+  `/plan`, `/stats`, `/search`, `/remember`, `/recall`).
+- Seed default model profiles (weak/medium/strong) on first migration.
+- `publish.yml` workflow: npm Trusted Publishing (OIDC) on `v*` tags, idempotent skip when published.
+
+### Changed
+- `get_guardrails`, `model_decision`, `cognitive_status` accept `project_root` for accurate model detection.
+- CLI `bootstrap` now pre-writes the plugin context cache (fast pre-response injection).
+- README + docs stats aligned to 55 tools / 247 checks.
+
 ## [0.1.0] - 2026-10-19
 
 ### Added

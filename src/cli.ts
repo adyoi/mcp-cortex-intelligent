@@ -259,6 +259,13 @@ async function run(cmd: string, args: string[]) {
         provision(skillPath(root), skillAutoBlock(), SKILL_VERSION);
         initPlan(root);
         initTask(root);
+        // Write context cache for the plugin (fast pre-response injection).
+        try {
+          const ctx = await contextPrompt("session_start", 6);
+          const cachePath = path.join(root, ".cortex-data", "context-cache.json");
+          fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+          fs.writeFileSync(cachePath, JSON.stringify({ ts: Date.now(), block: (ctx as any)?.context ?? "" }));
+        } catch { /* ignore */ }
         out = { model, tier, provisioned: true, root };
         break;
       }
