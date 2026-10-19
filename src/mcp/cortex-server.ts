@@ -777,9 +777,9 @@ reg(
 
 reg(
   "self_critique",
-  { description: "Structured self-critique (checklist + scoring) without LLM.", inputSchema: { artifact: z.string().min(1) } },
-  async (args: { artifact: string }) => {
-    return { content: [{ type: "text", text: JSON.stringify(selfCritique(args.artifact)) }] };
+  { description: "Structured self-critique (weighted checklist + scoring + severity + verdict) without LLM.", inputSchema: { artifact: z.string().min(1), tier: z.enum(["weak", "medium", "strong"]).optional() } },
+  async (args: { artifact: string; tier?: "weak" | "medium" | "strong" }) => {
+    return { content: [{ type: "text", text: JSON.stringify(selfCritique(args.artifact, { tier: args.tier })) }] };
   }
 );
 

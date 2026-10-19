@@ -543,6 +543,12 @@ async function main() {
     }
     const summ = await ccall("task_summary", {});
     check("task_summary works", summ.includes("total"), summ);
+    // Optimal / maximal guardrails + self-critique verification.
+    const sc2 = await ccall("self_critique", { artifact: "test only", tier: "weak" });
+    check("self_critique structured (percent/verdict)", sc2.includes("percent") && sc2.includes("verdict"), sc2.slice(0, 120));
+    const gr2 = await ccall("get_guardrails", { task: "delete user table", model: "anthropic/claude-sonnet-4-6" });
+    check("guardrails task-route+risk+anti-blunder", gr2.includes("Route:") && gr2.includes("Anti-blunder") && gr2.includes("Verifikasi"), gr2.slice(0, 160));
+    check("guardrails escalates destructive", gr2.includes("hapus") || gr2.includes("HATI-HATI"), gr2.slice(0, 200));
     const ip = await ccall("init_plan", { project_root: ROOT });
     check("init_plan works", ip.includes("path"), ip);
     const it = await ccall("init_task", { project_root: ROOT });
