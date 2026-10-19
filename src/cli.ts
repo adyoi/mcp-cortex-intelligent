@@ -264,7 +264,7 @@ async function run(cmd: string, args: string[]) {
           const ctx = await contextPrompt("session_start", 6);
           const cachePath = path.join(root, ".cortex-data", "context-cache.json");
           fs.mkdirSync(path.dirname(cachePath), { recursive: true });
-          fs.writeFileSync(cachePath, JSON.stringify({ ts: Date.now(), block: (ctx as any)?.context ?? "" }));
+          fs.writeFileSync(cachePath, JSON.stringify({ ts: Date.now(), block: (ctx as any)?.context ?? "", task: taskSummary() }));
         } catch { /* ignore */ }
         out = { model, tier, provisioned: true, root };
         break;

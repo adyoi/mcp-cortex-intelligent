@@ -47,6 +47,7 @@ import { scoreCompliance } from "../cognitive/compliance.js";
 import { runVerification } from "../cognitive/verifier.js";
 import { ingestExemplar, retrieveExemplars } from "../cognitive/exemplars.js";
 import { decisionClassify, decisionHealth } from "../decision/internal.js";
+import { recordToolCall, telemetryStats } from "../system/telemetry.js";
 import { listProcedures, getProcedure, ingestProcedure } from "../procedures/library.js";
 import * as pt from "../plantask/manager.js";
 
@@ -77,11 +78,30 @@ const server = new McpServer({
   version: serverVersion,
 });
 
+/**
+ * Registration wrapper: every tool call is timed into the telemetry table.
+ * Failures are recorded too and rethrown, so MCP error semantics stay intact.
+ */
+type ToolHandler = (args: any) => unknown;
+function reg(name: string, config: any, handler: ToolHandler): void {
+  server.registerTool(name, config, async (args: any) => {
+    const t0 = Date.now();
+    try {
+      const result = await handler(args);
+      recordToolCall(name, Date.now() - t0, true);
+      return result as any;
+    } catch (e) {
+      recordToolCall(name, Date.now() - t0, false);
+      throw e;
+    }
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* System                                                              */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "system_stats",
   {
     description: "Get overall system stats: DB location, documents, chunks, memories, tokens, embedding backend",
@@ -111,6 +131,7 @@ server.registerTool(
                 : {}),
               documents: docs,
               memories: mem,
+              telemetry: telemetryStats(),
             },
             null,
             2
@@ -125,7 +146,7 @@ server.registerTool(
 /* Maintenance                                                         */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "knowledge_reindex",
   {
     description:
@@ -155,7 +176,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "knowledge_backup",
   {
     description:
@@ -181,7 +202,7 @@ server.registerTool(
 /* Knowledge: ingest                                                         */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "knowledge_ingest_text",
   {
     description: "Store raw text as a knowledge document (chunked + embedded for later retrieval)",
@@ -201,7 +222,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "knowledge_ingest_file",
   {
     description: "Read a file and store it as a knowledge document. Honours KB_ALLOWED_DIRS when set.",
@@ -216,7 +237,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "knowledge_ingest_dir",
   {
     description: "Recursively ingest supported source files from a directory",
@@ -236,7 +257,7 @@ server.registerTool(
 /* Knowledge: search / retrieve                                              */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "knowledge_search",
   {
     description:
@@ -272,7 +293,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "knowledge_retrieve",
   {
     description:
@@ -309,7 +330,7 @@ server.registerTool(
 /* Knowledge: document management                                            */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "knowledge_list_documents",
   {
     description: "List stored knowledge documents (newest first, paginated)",
@@ -324,7 +345,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "knowledge_document_stats",
   {
     description: "Document storage statistics",
@@ -335,7 +356,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "knowledge_delete_document",
   {
     description: "Delete a document and all its chunks by ID",
@@ -353,7 +374,7 @@ server.registerTool(
 /* Context Management: memory                                          */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "knowledge_sync_session",
   {
     description:
@@ -372,7 +393,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_remember",
   {
     description:
@@ -395,7 +416,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_recall",
   {
     description: "Semantically search long-term memories relevant to a query. This is how you remember past context.",
@@ -411,7 +432,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_list",
   {
     description: "List memories, optionally filtered by type, tag, or minimum importance",
@@ -433,7 +454,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_get",
   {
     description: "Get a single memory by ID",
@@ -448,7 +469,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_update",
   {
     description: "Update content / type / importance / tags of an existing memory",
@@ -477,7 +498,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_forget",
   {
     description: "Delete a memory by ID",
@@ -491,7 +512,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_consolidate",
   {
     description: "Deduplicate near-identical memories, boost frequently-used ones, and optionally prune stale memories (enable with env KB_PRUNE=1)",
@@ -503,7 +524,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_stats",
   {
     description: "Long-term memory statistics (count, tokens, importance, by type)",
@@ -514,7 +535,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "memory_context",
   {
     description: "Build a compact context block from the most relevant memories for a given topic. Best for injecting memory into prompts.",
@@ -541,7 +562,7 @@ server.registerTool(
 /* Cortex: Provisioning                                                */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "bootstrap_session",
   { description: "Bootstrap a session: detect model, provision agent & skill, record state.", inputSchema: { project_root: z.string().min(1) } },
   async (args: { project_root: string }) => {
@@ -554,7 +575,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "provision_agent_skill",
   { description: "Provision or append agent & skill files (idempotent).", inputSchema: { project_root: z.string().min(1), force_version: z.string().optional() } },
   async (args: { project_root: string; force_version?: string }) => {
@@ -565,7 +586,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "list_agents_skills",
   { description: "List agent & skill files and their auto-block versions.", inputSchema: { project_root: z.string().min(1) } },
   async (args: { project_root: string }) => {
@@ -576,7 +597,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "update_procedure_block",
   { description: "Update the auto block in agent & skill files with a new version.", inputSchema: { project_root: z.string().min(1), version: z.string().min(1) } },
   async (args: { project_root: string; version: string }) => {
@@ -590,7 +611,7 @@ server.registerTool(
 /* Cortex: Model                                                      */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "detect_model",
   { description: "Detect the model in use from env/config/arg.", inputSchema: { model: z.string().optional(), project_root: z.string().optional() } },
   async (args: { model?: string; project_root?: string }) => {
@@ -599,7 +620,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "get_model_profile",
   { description: "Get model profile (tier, capabilities).", inputSchema: { model: z.string().min(1) } },
   async (args: { model: string }) => {
@@ -607,7 +628,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "set_model",
   { description: "Override the model for this session (env-level hint).", inputSchema: { model: z.string().min(1) } },
   async (args: { model: string }) => {
@@ -616,7 +637,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "get_guardrails",
   { description: "Get procedure guardrails (anti-blunder) for a task/model.", inputSchema: { task: z.string().min(1), model: z.string().optional(), project_root: z.string().optional() } },
   async (args: { task: string; model?: string; project_root?: string }) => {
@@ -625,7 +646,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "model_decision",
   { description: "Internal model decision: tier/risk/route/needsVerify.", inputSchema: { model: z.string().optional(), task: z.string().min(1), files: z.array(z.string()).optional(), project_root: z.string().optional() } },
   async (args: { model?: string; task: string; files?: string[]; project_root?: string }) => {
@@ -638,7 +659,7 @@ server.registerTool(
 /* Cortex: Procedure / Knowledge extras                               */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "get_procedure",
   { description: "Get a procedure by name.", inputSchema: { name: z.string().min(1) } },
   async (args: { name: string }) => {
@@ -647,7 +668,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "list_procedures",
   { description: "List all procedures.", inputSchema: {} },
   async () => {
@@ -655,7 +676,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "ingest_procedure",
   { description: "Ingest a new procedure.", inputSchema: { name: z.string().min(1), version: z.string().min(1), content: z.string().min(1), tags: z.array(z.string()).optional() } },
   async (args: { name: string; version: string; content: string; tags?: string[] }) => {
@@ -664,16 +685,16 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "retrieve_exemplars",
-  { description: "Retrieve best exemplars for a task.", inputSchema: { task: z.string().min(1), top_k: z.number().int().min(1).max(20).optional().default(5) } },
-  async (args: { task: string; top_k?: number }) => {
-    const r = await retrieveExemplars(args.task, args.top_k ?? 5);
+  { description: "Retrieve best exemplars for a task (optionally filtered by task_type).", inputSchema: { task: z.string().min(1), top_k: z.number().int().min(1).max(20).optional().default(5), task_type: z.string().min(1).max(MAX_TAG).optional() } },
+  async (args: { task: string; top_k?: number; task_type?: string }) => {
+    const r = await retrieveExemplars(args.task, args.top_k ?? 5, args.task_type);
     return { content: [{ type: "text", text: JSON.stringify(r) }] };
   }
 );
 
-server.registerTool(
+reg(
   "ingest_exemplar",
   { description: "Ingest a high-quality exemplar.", inputSchema: { task_type: z.string().min(1), language: z.string().min(1), title: z.string().min(1), content: z.string().min(1), outcome: z.string().min(1) } },
   async (args: { task_type: string; language: string; title: string; content: string; outcome: string }) => {
@@ -686,7 +707,7 @@ server.registerTool(
 /* Cortex: Cognitive                                                  */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "self_critique",
   { description: "Structured self-critique (checklist + scoring) without LLM.", inputSchema: { artifact: z.string().min(1) } },
   async (args: { artifact: string }) => {
@@ -694,7 +715,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "score_compliance",
   { description: "Score procedure compliance of a plan/diff.", inputSchema: { plan: z.string().min(1) } },
   async (args: { plan: string }) => {
@@ -702,7 +723,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "run_verification",
   { description: "Run allowlisted verification commands (test/lint/typecheck).", inputSchema: { commands: z.array(z.string()).optional(), cwd: z.string().optional(), timeout_ms: z.number().int().min(1000).max(600000).optional() } },
   async (args: { commands?: string[]; cwd?: string; timeout_ms?: number }) => {
@@ -719,7 +740,7 @@ server.registerTool(
 /* Cortex: Decision                                                   */
 /* ------------------------------------------------------------------ */
 
-server.registerTool(
+reg(
   "decision_classify",
   { description: "Internal decision classification (tier/risk/route/compliance).", inputSchema: { state: z.string().min(1), questions: z.any() } },
   async (args: { state: string; questions: any }) => {
@@ -727,7 +748,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "decision_health",
   { description: "Health of the internal decision engine.", inputSchema: {} },
   async () => {
@@ -735,7 +756,7 @@ server.registerTool(
   }
 );
 
-server.registerTool(
+reg(
   "cognitive_status",
   { description: "Cognitive status summary for the current session.", inputSchema: { project_root: z.string().optional() } },
   async (args: { project_root?: string }) => {
@@ -749,46 +770,51 @@ server.registerTool(
 /* Cortex: Plan & Task Management                                     */
 /* ------------------------------------------------------------------ */
 
-server.registerTool("init_plan", { description: "Initialize PLAN.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
+reg("init_plan", { description: "Initialize PLAN.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.initPlan(args.project_root)) }] }));
 
-server.registerTool("read_plan", { description: "Read PLAN.md content.", inputSchema: { project_root: z.string().min(1), full: z.boolean().optional().default(true) } },
+reg("read_plan", { description: "Read PLAN.md content.", inputSchema: { project_root: z.string().min(1), full: z.boolean().optional().default(true) } },
   async (args: { project_root: string; full?: boolean }) => ({ content: [{ type: "text", text: JSON.stringify(pt.readPlan(args.project_root, args.full ?? true)) }] }));
 
-server.registerTool("update_plan_section", { description: "Update a PLAN.md section by heading.", inputSchema: { project_root: z.string().min(1), heading: z.string().min(1), content: z.string() } },
+reg("update_plan_section", { description: "Update a PLAN.md section by heading.", inputSchema: { project_root: z.string().min(1), heading: z.string().min(1), content: z.string() } },
   async (args: { project_root: string; heading: string; content: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.updatePlanSection(args.project_root, args.heading, args.content)) }] }));
 
-server.registerTool("init_task", { description: "Initialize TASK.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
+reg("init_task", { description: "Initialize TASK.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.initTask(args.project_root)) }] }));
 
-server.registerTool("task_create", { description: "Create a new task.", inputSchema: { title: z.string().min(1), plan_ref: z.string().optional(), priority: z.number().int().optional(), owner: z.string().optional() } },
+reg("task_create", { description: "Create a new task.", inputSchema: { title: z.string().min(1), plan_ref: z.string().optional(), priority: z.number().int().optional(), owner: z.string().optional() } },
   async (args: { title: string; plan_ref?: string; priority?: number; owner?: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskCreate(args.title, args.plan_ref, args.priority ?? 0, args.owner)) }] }));
 
-server.registerTool("task_list", { description: "List tasks, optionally filtered by status/priority.", inputSchema: { status: z.string().optional(), priority: z.number().int().optional() } },
-  async (args: { status?: string; priority?: number }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskList({ status: args.status, priority: args.priority })) }] }));
+reg("task_list", { description: "List tasks, optionally filtered by status/priority, with pagination.", inputSchema: { status: z.string().optional(), priority: z.number().int().optional(), limit: z.number().int().min(1).max(1000).optional(), offset: z.number().int().min(0).optional() } },
+  async (args: { status?: string; priority?: number; limit?: number; offset?: number }) => {
+    const filter = { status: args.status, priority: args.priority };
+    const limit = args.limit ?? pt.TASK_LIST_DEFAULT;
+    const items = pt.taskList({ ...filter, limit, offset: args.offset });
+    return { content: [{ type: "text", text: JSON.stringify({ total: pt.taskCount(filter), limit, offset: args.offset ?? 0, items }) }] };
+  });
 
-server.registerTool("task_get", { description: "Get task by id.", inputSchema: { id: z.string().min(1) } },
+reg("task_get", { description: "Get task by id.", inputSchema: { id: z.string().min(1) } },
   async (args: { id: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskGet(args.id)) }] }));
 
-server.registerTool("task_start", { description: "Set task status to doing.", inputSchema: { id: z.string().min(1) } },
+reg("task_start", { description: "Set task status to doing.", inputSchema: { id: z.string().min(1) } },
   async (args: { id: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskStart(args.id)) }] }));
 
-server.registerTool("task_done", { description: "Set task status to done.", inputSchema: { id: z.string().min(1) } },
+reg("task_done", { description: "Set task status to done.", inputSchema: { id: z.string().min(1) } },
   async (args: { id: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskDone(args.id)) }] }));
 
-server.registerTool("task_block", { description: "Set task status to blocked with reason.", inputSchema: { id: z.string().min(1), reason: z.string().min(1) } },
+reg("task_block", { description: "Set task status to blocked with reason.", inputSchema: { id: z.string().min(1), reason: z.string().min(1) } },
   async (args: { id: string; reason: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskBlock(args.id, args.reason)) }] }));
 
-server.registerTool("task_delete", { description: "Delete a task.", inputSchema: { id: z.string().min(1) } },
+reg("task_delete", { description: "Delete a task.", inputSchema: { id: z.string().min(1) } },
   async (args: { id: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskDelete(args.id)) }] }));
 
-server.registerTool("task_update", { description: "Update task title/priority/owner/plan_ref/notes.", inputSchema: { id: z.string().min(1), title: z.string().optional(), priority: z.number().int().optional(), owner: z.string().optional(), plan_ref: z.string().optional(), notes: z.string().optional() } },
+reg("task_update", { description: "Update task title/priority/owner/plan_ref/notes.", inputSchema: { id: z.string().min(1), title: z.string().optional(), priority: z.number().int().optional(), owner: z.string().optional(), plan_ref: z.string().optional(), notes: z.string().optional() } },
   async (args: { id: string; title?: string; priority?: number; owner?: string; plan_ref?: string; notes?: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskUpdate(args.id, { title: args.title, priority: args.priority, owner: args.owner, plan_ref: args.plan_ref, notes: args.notes })) }] }));
 
-server.registerTool("task_sync_md", { description: "Sync TASK.md from DB.", inputSchema: { project_root: z.string().min(1) } },
+reg("task_sync_md", { description: "Sync TASK.md from DB.", inputSchema: { project_root: z.string().min(1) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskSyncMd(args.project_root)) }] }));
 
-server.registerTool("task_summary", { description: "Summary of task statuses.", inputSchema: {} },
+reg("task_summary", { description: "Summary of task statuses.", inputSchema: {} },
   async () => ({ content: [{ type: "text", text: JSON.stringify(pt.taskSummary()) }] }));
 
 /* ------------------------------------------------------------------ */

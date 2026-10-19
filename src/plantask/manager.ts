@@ -8,6 +8,10 @@ function tid(): string {
   return "task-" + createHash("sha256").update(String(Date.now()) + Math.random()).digest("hex").slice(0, 8);
 }
 
+/** Bounded by default: a task table would otherwise dump every row into one tool result. */
+export const TASK_LIST_DEFAULT = 100;
+export const TASK_LIST_MAX = 1000;
+
 export function initPlan(projectRoot: string): { created: boolean; path: string } {
   const p = path.join(projectRoot, "PLAN.md");
   if (fs.existsSync(p)) return { created: false, path: p };
@@ -61,13 +65,26 @@ export function taskCreate(title: string, planRef?: string, priority = 0, owner?
   return { id };
 }
 
-export function taskList(filter: { status?: string; priority?: number } = {}): any[] {
+export function taskList(filter: { status?: string; priority?: number; limit?: number; offset?: number } = {}): any[] {
   let sql = "SELECT * FROM tasks WHERE 1=1";
   const params: any[] = [];
   if (filter.status) { sql += " AND status = ?"; params.push(filter.status); }
   if (filter.priority !== undefined) { sql += " AND priority = ?"; params.push(filter.priority); }
-  sql += " ORDER BY priority DESC, created_at ASC";
+  sql += " ORDER BY priority DESC, created_at ASC, id ASC";
+  const limit = Math.min(Math.max(Math.trunc(filter.limit ?? TASK_LIST_DEFAULT), 1), TASK_LIST_MAX);
+  const offset = Math.max(Math.trunc(filter.offset ?? 0), 0);
+  sql += " LIMIT ? OFFSET ?";
+  params.push(limit, offset);
   return db.getDB().prepare(sql).all(...params) as any[];
+}
+
+/** Total matching rows for a taskList filter (pagination bookkeeping). */
+export function taskCount(filter: { status?: string; priority?: number } = {}): number {
+  let sql = "SELECT COUNT(*) AS c FROM tasks WHERE 1=1";
+  const params: any[] = [];
+  if (filter.status) { sql += " AND status = ?"; params.push(filter.status); }
+  if (filter.priority !== undefined) { sql += " AND priority = ?"; params.push(filter.priority); }
+  return (db.getDB().prepare(sql).get(...params) as { c: number }).c;
 }
 
 export function taskGet(id: string): any {
@@ -118,7 +135,7 @@ export function taskSummary(): { total: number; todo: number; doing: number; don
 
 export function taskSyncMd(projectRoot: string): { path: string } {
   const p = path.join(projectRoot, "TASK.md");
-  const tasks = taskList();
+  const tasks = taskList({ limit: TASK_LIST_MAX });
   const groups: Record<string, any[]> = { todo: [], doing: [], done: [], blocked: [] };
   for (const t of tasks) {
     if (!groups[t.status]) groups[t.status] = [];
