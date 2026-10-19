@@ -16,14 +16,14 @@ MCP server that augments an ordinary LLM with context, procedures, memory, exemp
 
 ```mermaid
 flowchart TB
-  Client[MCP Client (OpenCode)] -->|stdio| Server[Cortex MCP Server (offline)]
-  Server --> Provisioner[Provisioner<br/>agent & skill, marker-block]
-  Server --> ModelGuard[Model Guard<br/>resolver, guardrails, decision]
-  Server --> CogAug[Cognitive Augmentor<br/>exemplar, self-critique, compliance, verifier]
-  Server --> KB[Knowledge Base<br/>hybrid search + memory]
-  Server --> Decision[Internal Decision Engine<br/>heuristics]
-  Server --> SQLite[(SQLite + FTS5)]
-  Server --> Verifier[Verification Runner<br/>allowlist, sandbox]
+  Client["MCP Client (OpenCode)"] -->|stdio| Server["Cortex MCP Server (offline)"]
+  Server --> Provisioner["Provisioner<br/>agent and skill, marker-block"]
+  Server --> ModelGuard["Model Guard<br/>resolver, guardrails, decision"]
+  Server --> CogAug["Cognitive Augmentor<br/>exemplar, self-critique, compliance, verifier"]
+  Server --> KB["Knowledge Base<br/>hybrid search plus memory"]
+  Server --> Decision["Internal Decision Engine<br/>heuristics"]
+  Server --> SQLite[("SQLite + FTS5")]
+  Server --> Verifier["Verification Runner<br/>allowlist, sandbox"]
 ```
 
 ## Features
@@ -125,13 +125,13 @@ Add to `~/.config/opencode/opencode.json`:
 
 ```mermaid
 flowchart LR
-  A[AGENT] --> B[SKILL]
-  B --> C[PLAN.md]
-  C --> D[TASK.md]
-  D --> E[EXECUTE]
-  E --> F{Verify?}
-  F -- pass --> G[DONE: task_done]
-  F -- fail --> H[task_block / revise]
+  A["AGENT"] --> B["SKILL"]
+  B --> C["PLAN.md"]
+  C --> D["TASK.md"]
+  D --> E["EXECUTE"]
+  E --> F{"Verify?"}
+  F -- pass --> G["DONE: task_done"]
+  F -- fail --> H["task_block / revise"]
   H --> E
   G --> D
 ```
