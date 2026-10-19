@@ -8,6 +8,20 @@ Make ordinary LLMs smarter — offline, no API keys, no external services.
 
 MCP server that augments an ordinary LLM with context, procedures, memory, exemplars, verification, and an internal decision engine. Standard MCP (stdio), compatible with OpenCode, Claude Desktop, Cursor, VS Code, and any MCP client.
 
+## Architecture
+
+```mermaid
+flowchart TB
+  Client[MCP Client (OpenCode)] -->|stdio| Server[Cortex MCP Server (offline)]
+  Server --> Provisioner[Provisioner<br/>agent & skill, marker-block]
+  Server --> ModelGuard[Model Guard<br/>resolver, guardrails, decision]
+  Server --> CogAug[Cognitive Augmentor<br/>exemplar, self-critique, compliance, verifier]
+  Server --> KB[Knowledge Base<br/>hybrid search + memory]
+  Server --> Decision[Internal Decision Engine<br/>heuristics]
+  Server --> SQLite[(SQLite + FTS5)]
+  Server --> Verifier[Verification Runner<br/>allowlist, sandbox]
+```
+
 ## Features
 
 - **Auto-Provision Agent & Skill** — idempotent marker-block append, never overwrites user content, backup before write.
@@ -104,6 +118,21 @@ Add to `~/.config/opencode/opencode.json`:
 5. `score_compliance(plan)` + `self_critique(artifact)`.
 
 ### Plan & Task Loop
+
+```mermaid
+flowchart LR
+  A[AGENT] --> B[SKILL]
+  B --> C[PLAN.md]
+  C --> D[TASK.md]
+  D --> E[EXECUTE]
+  E --> F{Verify?}
+  F -- pass --> G[DONE: task_done]
+  F -- fail --> H[task_block / revise]
+  H --> E
+  G --> D
+```
+
+### Steps
 1. `init_plan` + `init_task`.
 2. Agent reads PLAN.md → picks next task.
 3. `task_list(status="todo")` → choose.
