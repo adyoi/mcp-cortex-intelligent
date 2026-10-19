@@ -1,79 +1,72 @@
-export const CortexAutoPlugin = async ({ directory }: { directory?: string }) => {
-  const root = directory ?? process.cwd();
-  const cacheFile = root + "/.cortex-data/context-cache.json";
-  const cli = "D:/Project/mcp/dist/cli.js";
-  const node = process.execPath;
+import { Plugin } from "@opencode/plugin";
+import { spawnSync } from "node:child_process";
+import * as fs from "node:fs";
 
-  const runCli = (args: string[]): string => {
-    try {
-      const { execFileSync } = require("node:child_process");
-      return execFileSync(node, [cli, ...args], {
-        cwd: root,
-        encoding: "utf8",
-        timeout: 5000,
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-    } catch {
-      return "";
-    }
-  };
+export default Plugin.define({
+  id: "cortex-auto",
+  async setup(ctx) {
+    const root = ctx.location.directory;
+    const cacheFile = root + "/.cortex-data/context-cache.json";
+    const cli = "D:/Project/mcp/dist/cli.js";
+    const node = process.execPath;
 
-  // Bootstrap once per workspace.
-  try {
-    const { readFileSync, existsSync } = require("node:fs");
-    const flag = root + "/.cortex-data/.bootstrapped";
-    if (!existsSync(flag)) {
-      runCli(["bootstrap", root]);
-      require("node:fs").writeFileSync(flag, String(Date.now()));
-    }
-  } catch { /* never break the chat */ }
-
-  // Inject context before every model dispatch.
-  const ctxHook = async (ctx: any) => {
-    try {
-      await ctx.session.hook("context", (event: any) => {
-        let block = "";
+    const runCli = (args: string[]): string => {
+      for (const argv of [[cli, ...args], ["--import", "tsx", "D:/Project/mcp/src/cli.ts", ...args]]) {
         try {
-          const fs = require("node:fs");
-          if (fs.existsSync(cacheFile)) {
-            const cached = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
-            if (cached && Date.now() - cached.ts < 5 * 60 * 1000) block = cached.block || "";
-          }
-        } catch { /* ignore */ }
-        if (!block) block = runCli(["context", "session"]);
-        if (block) {
-          event.system = event.system || [];
-          event.system.push({ type: "text", text: block });
-        }
-        // Task status
-        try {
-          const out = runCli(["task-summary"]);
-          const summary = JSON.parse(out);
-          if (summary && summary.total > 0) {
-            event.system = event.system || [];
-            event.system.push({ type: "text", text: `Task status: total=${summary.total} todo=${summary.todo} doing=${summary.doing} done=${summary.done} blocked=${summary.blocked}. Check task_list before starting new work.` });
-          }
-        } catch { /* ignore */ }
-      });
-    } catch { /* ignore */ }
-  };
-
-  // Best-effort: register hook if supported.
-  try { await ctxHook(ctx as any); } catch { /* ignore */ }
-
-  return {
-    event: async ({ event }: { event: { type?: string } }) => {
-      const t = event?.type;
-      if (t === "session.created" || t === "session.updated") {
-        try {
-          const flag = root + "/.cortex-data/.bootstrapped";
-          const fs = require("node:fs");
-          if (!fs.existsSync(flag)) {
-            runCli(["bootstrap", root]);
-            fs.writeFileSync(flag, String(Date.now()));
-          }
+          const r = spawnSync(node, argv, {
+            cwd: root,
+            encoding: "utf8",
+            timeout: 5000,
+            windowsHide: true,
+            stdio: ["ignore", "pipe", "ignore"],
+          });
+          if (r.status === 0 && r.stdout) return String(r.stdout).trim();
         } catch { /* ignore */ }
       }
-    },
-  };
-};
+      return "";
+    };
+
+    // Bootstrap once per workspace.
+    const loaded = await ctx.storage.get("bootstrapped");
+    if (!loaded) {
+      runCli(["bootstrap", root]);
+      try {
+        fs.mkdirSync(root + "/.cortex-data", { recursive: true });
+        fs.writeFileSync(root + "/.cortex-data/.bootstrapped", String(Date.now()));
+      } catch { /* ignore */ }
+      await ctx.storage.set("bootstrapped", true);
+    }
+
+    // Inject context before every model dispatch.
+    await ctx.session.hook("context", (event: any) => {
+      let block = "";
+      try {
+        if (fs.existsSync(cacheFile)) {
+          const cached = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+          if (cached && Date.now() - cached.ts < 5 * 60 * 1000) block = cached.block || "";
+        }
+      } catch { /* ignore */ }
+      if (!block) block = runCli(["context", "session"]);
+      if (block) {
+        event.system = event.system || [];
+        event.system.push({ type: "text", text: block });
+        // cache for next calls
+        try {
+          fs.mkdirSync(root + "/.cortex-data", { recursive: true });
+          fs.writeFileSync(cacheFile, JSON.stringify({ ts: Date.now(), block }));
+        } catch { /* ignore */ }
+      }
+      // Task status
+      try {
+        const out = runCli(["task-summary"]);
+        const summary = JSON.parse(out);
+        if (summary && summary.total > 0) {
+          event.system = event.system || [];
+          event.system.push({ type: "text", text: `Task status: total=${summary.total} todo=${summary.todo} doing=${summary.doing} done=${summary.done} blocked=${summary.blocked}. Check task_list before starting new work.` });
+        }
+      } catch { /* ignore */ }
+    });
+
+    return () => {};
+  },
+});
