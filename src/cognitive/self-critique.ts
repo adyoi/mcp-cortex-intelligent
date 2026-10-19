@@ -2,7 +2,7 @@
  * Structured self-critique.
  *
  * The old version was four regexes and a score. A real critique needs to say
- * *what* is missing, *how bad* it is, and *what to do next* — and it must scale
+ * *what* is missing, *how bad* it is, and *what to do next* - and it must scale
  * with the model tier: a weak model needs blunt, explicit instructions, a
  * strong model needs a short punch list it can act on.
  */
@@ -26,7 +26,7 @@ export interface CritiqueResult {
   issues: string[];
   suggestions: string[];
   checks: CritiqueCheck[];
-  /** blocker | major | minor — the worst severity found, or "clean". */
+  /** blocker | major | minor - the worst severity found, or "clean". */
   severity: CritiqueSeverity | "clean";
   /** ready | revise | blocked */
   verdict: "ready" | "revise" | "blocked";
@@ -55,8 +55,8 @@ const RULES: Rule[] = [
     severity: "blocker",
     test: /\b(read|inspect|open|view|grep|look at)\b/i,
     fail: /^\s*$/,
-    message: "Tidak ada jejak bahwa file target dibaca sebelum diedit.",
-    suggestion: "Baca file target (read/grep) dan tampilkan bagian relevan sebelum proposes edit.",
+    message: "No evidence the target file was read before editing.",
+    suggestion: "Read the target (read/grep) and show the relevant section before proposing edits.",
   },
   {
     name: "has_verification",
@@ -64,8 +64,8 @@ const RULES: Rule[] = [
     severity: "blocker",
     test: /npm\s+(test|run\s+lint|run\s+typecheck)|run_verification|\b(lint|typecheck|tsc)\b/i,
     fail: /^\s*$/,
-    message: "Tidak ada perintah verifikasi (test/lint/typecheck).",
-    suggestion: "Jalankan `run_verification` (npm test, npm run lint, npm run typecheck) dan laporkan hasilnya.",
+    message: "No verification command (test/lint/typecheck).",
+    suggestion: "Run `run_verification` (npm test, npm run lint, npm run typecheck) and report the results.",
   },
   {
     name: "has_tests",
@@ -73,8 +73,8 @@ const RULES: Rule[] = [
     severity: "major",
     test: /\b(test|spec|coverage|vitest|jest|node:test|assert)\b/i,
     fail: /^\s*$/,
-    message: "Perubahan kode tanpa test.",
-    suggestion: "Tambahkan test yang menutup perilaku baru/perubahan ini.",
+    message: "Code change without tests.",
+    suggestion: "Add a test that covers the new/changed behavior.",
   },
   {
     name: "no_secrets",
@@ -82,8 +82,8 @@ const RULES: Rule[] = [
     severity: "blocker",
     test: /(?!)/,
     fail: /(api[_-]?key|secret|token|password|passwd|bearer|private[_-]?key)\s*[:=]\s*["'][^"']{6,}/i,
-    message: "Kemungkinan ada secret literal di artifact.",
-    suggestion: "Ganti literal secret dengan env var; jangan pernah menyimpan kredensial.",
+    message: "Possible literal secret in the artifact.",
+    suggestion: "Replace literal secrets with env vars; never persist credentials.",
   },
   {
     name: "no_destructive_without_backup",
@@ -91,26 +91,26 @@ const RULES: Rule[] = [
     severity: "blocker",
     test: /(backup|\.bak|rollback|restore|confirm|snapshot)/i,
     fail: /(rm\s+-rf|drop\s+table|delete\s+from|truncate\s+table|format\s+[a-z]:)/i,
-    message: "Aksi destruktif tanpa backup/rollback.",
-    suggestion: "Buat backup/rollback plan (atau `knowledge_backup`) sebelum menjalankan aksi destruktif.",
+    message: "Destructive action without backup/rollback.",
+    suggestion: "Create a backup/rollback plan (or `knowledge_backup`) before running a destructive action.",
   },
   {
     name: "has_plan",
     weight: 3,
     severity: "minor",
-    test: /\b(plan|step|langkah|approach|strategy|rencana)\b/i,
+    test: /\b(plan|step|steps|approach|strategy)\b/i,
     fail: /^\s*$/,
-    message: "Tidak ada rencana/langkah yang dinyatakan.",
-    suggestion: "Tulis 2-3 langkah singkat sebelum eksekusi (Read → Edit → Verify).",
+    message: "No plan or steps stated.",
+    suggestion: "Write 2-3 short steps before executing (Read -> Edit -> Verify).",
   },
   {
     name: "has_review",
     weight: 2,
     severity: "minor",
-    test: /\b(review|diff|self[- ]critique|check again|periksa ulang|evaluasi)\b/i,
+    test: /\b(review|diff|self[- ]critique|check again|double[- ]check)\b/i,
     fail: /^\s*$/,
-    message: "Tidak ada tahap review terhadap hasil.",
-    suggestion: "Review diff/output sebelum menyatakan selesai.",
+    message: "No review step over the result.",
+    suggestion: "Review the diff/output before declaring it done.",
   },
   {
     name: "no_debug_leftovers",
@@ -118,8 +118,8 @@ const RULES: Rule[] = [
     severity: "minor",
     test: /(?!)/,
     fail: /(console\.log\(|debugger;|\bTODO\b|\bFIXME\b|\bXXX\b|print\()/i,
-    message: "Ada sisa debug/TODO di artifact.",
-    suggestion: "Hapus console.log/debug/TODO yang tertinggal sebelum finish.",
+    message: "Leftover debug statements or TODOs.",
+    suggestion: "Remove leftover console.log/debug/TODO before finishing.",
   },
   {
     name: "error_handling",
@@ -127,8 +127,8 @@ const RULES: Rule[] = [
     severity: "major",
     test: /(try\s*\{|catch\s*\(|throw\s+new|error handling|fallback|guard|validate)/i,
     fail: /^\s*$/,
-    message: "Penanganan error tidak dibahas.",
-    suggestion: "Tambahkan validasi input dan jalur error (try/catch, guard, pesan jelas).",
+    message: "Error handling is not addressed.",
+    suggestion: "Add input validation and an error path (try/catch, guard, clear message).",
   },
   {
     name: "no_hardcoded_machine_paths",
@@ -136,8 +136,8 @@ const RULES: Rule[] = [
     severity: "minor",
     test: /(?!)/,
     fail: /([A-Z]:\\Users\\|\/home\/[a-z0-9_-]+\/|\/Users\/[A-Za-z0-9_-]+\/)/i,
-    message: "Ada path absolut mesin yang di-hardcode.",
-    suggestion: "Gunakan path relatif atau konfigurasi/env agar portabel.",
+    message: "Hardcoded absolute machine path.",
+    suggestion: "Use relative paths or configuration/env so the change stays portable.",
   },
   {
     name: "docs_or_changelog_updated",
@@ -145,8 +145,8 @@ const RULES: Rule[] = [
     severity: "minor",
     test: /(readme|changelog|docs\/|documentation|AGENTS\.md|PLAN\.md|TASK\.md)/i,
     fail: /^\s*$/,
-    message: "Dokumentasi/CHANGELOG belum disentuh padahal ada perubahan.",
-    suggestion: "Perbarui README/CHANGELOG bila perilaku publik berubah.",
+    message: "Docs/CHANGELOG not touched although behavior changed.",
+    suggestion: "Update README/CHANGELOG when public behavior changes.",
   },
 ];
 
@@ -206,7 +206,11 @@ export function selfCritique(artifact: string, opts: SelfCritiqueOptions = {}): 
       ?? "minor");
 
   const hasBlocker = failed.some((c) => c.severity === "blocker");
-  const verdict: CritiqueResult["verdict"] = hasBlocker || percent < threshold ? (hasBlocker ? "blocked" : "revise") : percent >= threshold ? "ready" : "revise";
+  const verdict: CritiqueResult["verdict"] = hasBlocker
+    ? "blocked"
+    : percent >= threshold
+      ? "ready"
+      : "revise";
 
   const summary = failed.length === 0
     ? `All ${checks.length} checks passed. Ready to deliver.`
