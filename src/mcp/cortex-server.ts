@@ -48,6 +48,7 @@ import { runVerification } from "../cognitive/verifier.js";
 import { ingestExemplar, retrieveExemplars } from "../cognitive/exemplars.js";
 import { decisionClassify, decisionHealth } from "../decision/internal.js";
 import { recordToolCall, telemetryStats } from "../system/telemetry.js";
+import { webFetch, validateUrl, FETCH_TIMEOUT_MS } from "../system/webfetch.js";
 import { listProcedures, getProcedure, ingestProcedure } from "../procedures/library.js";
 import * as pt from "../plantask/manager.js";
 
@@ -135,6 +136,73 @@ reg(
             },
             null,
             2
+          ),
+        },
+      ],
+    };
+  }
+);
+
+/* ------------------------------------------------------------------ */
+/* Web                                                                 */
+/* ------------------------------------------------------------------ */
+
+reg(
+  "webfetch",
+  {
+    description:
+      "Fetch a public http/https URL and return its title + readable text. " +
+      "Private/loopback hosts are refused. Use `ingest: true` to also store the page in the knowledge base.",
+    inputSchema: {
+      url: z.string().min(1).max(MAX_PATH).describe("Absolute http/https URL."),
+      max_chars: z.number().int().min(200).max(100_000).optional().default(2_000),
+      timeout_ms: z.number().int().min(1_000).max(60_000).optional().default(FETCH_TIMEOUT_MS),
+      ingest: z.boolean().optional().default(false).describe("Also store the page in the knowledge base."),
+      source: z.string().min(1).max(MAX_TAG).optional().default("web"),
+    },
+  },
+  async (args: { url: string; max_chars?: number; timeout_ms?: number; ingest?: boolean; source?: string }) => {
+    const res = await webFetch(args.url, { maxChars: args.max_chars ?? 2_000, timeoutMs: args.timeout_ms ?? FETCH_TIMEOUT_MS });
+    const out: Record<string, unknown> = {
+      url: res.url,
+      finalUrl: res.finalUrl,
+      status: res.status,
+      ok: res.ok,
+      contentType: res.contentType,
+      title: res.title,
+      text: res.text,
+      truncated: res.truncated,
+      bytes: res.bytes,
+      elapsedMs: res.elapsedMs,
+    };
+    if (args.ingest && res.ok && res.text) {
+      try {
+        const doc = await ingestText(res.text, res.title || res.finalUrl, { source: args.source ?? "web", contentType: "text", metadata: { url: res.finalUrl } });
+        out.ingested = { id: doc.docId, title: doc.title };
+      } catch (e) {
+        out.ingestError = (e as Error).message;
+      }
+    }
+    return { content: [{ type: "text", text: JSON.stringify(out, null, 2) }] };
+  }
+);
+
+reg(
+  "webfetch_validate",
+  {
+    description: "Validate a URL for webfetch (protocol + SSRF guard) without fetching it.",
+    inputSchema: { url: z.string().min(1).max(MAX_PATH) },
+  },
+  async (args: { url: string }) => {
+    const v = validateUrl(args.url);
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            v.ok
+              ? { ok: true, url: v.url.href, protocol: v.url.protocol, host: v.url.hostname }
+              : { ok: false, error: v.error }
           ),
         },
       ],

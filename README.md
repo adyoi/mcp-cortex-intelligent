@@ -92,7 +92,7 @@ Add to `~/.config/opencode/opencode.json`:
 }
 ```
 
-## Tools (55)
+## Tools (57)
 
 | Group | Count | Tools |
 |---|---|---|
@@ -105,6 +105,7 @@ Add to `~/.config/opencode/opencode.json`:
 | Decision | 2 | decision_classify, decision_health |
 | Procedure | 5 | get_procedure, list_procedures, ingest_procedure, retrieve_exemplars, ingest_exemplar |
 | Plan & Task | 14 | init_plan, read_plan, update_plan_section, init_task, task_create, task_list, task_get, task_start, task_done, task_block, task_delete, task_update, task_sync_md, task_summary |
+| Web | 2 | webfetch, webfetch_validate |
 
 ## Workflow
 

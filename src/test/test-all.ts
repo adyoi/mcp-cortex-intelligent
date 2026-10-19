@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import { htmlToText, validateUrl, isBlockedHost } from "../system/webfetch.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -424,9 +425,10 @@ async function main() {
       "decision_classify", "decision_health", "cognitive_status",
       "init_plan", "read_plan", "update_plan_section", "init_task", "task_create", "task_list",
       "task_get", "task_start", "task_done", "task_block", "task_delete", "task_update", "task_sync_md", "task_summary",
+      "webfetch", "webfetch_validate",
     ];
     check("all tools registered", expected.every((t) => toolNames.includes(t)), `missing: ${expected.filter((t) => !toolNames.includes(t))}`);
-    check("exactly 55 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
+    check("exactly 57 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
 
     const sys = await client.callTool({ name: "system_stats", arguments: {} });
     const sysText = toolText(sys);
@@ -707,7 +709,12 @@ async function main() {
   check("entry: CORTEX_ENV_FILE honored (dbDir from .env)", parsedStat.dbDir === path.resolve(envDir), String(parsedStat.dbDir));
   check("entry: exists on disk", fs.existsSync(path.join(ROOT, "src", "index.ts")));
 
-  /* ================== 9. HARDENING REGRESSIONS ================== */
+  const htmlT = htmlToText('<html><title>Test Page</title><body><p>Hello world</p></body></html>');
+  check("htmlToText extracts title and body", htmlT.title === "Test Page" && htmlT.text.includes("Hello world"), JSON.stringify(htmlT));
+  check("validateUrl allows public https", validateUrl("https://example.com/").ok === true, "");
+  check("validateUrl blocks localhost", validateUrl("http://localhost/").ok === false, "");
+  check("isBlockedHost blocks 10.x", isBlockedHost("10.0.0.1"), "");
+
   console.log("\n=== 9. Hardening Regressions ===");
 
   // FTS index must be populated, not just created: a fresh table with no backfill
