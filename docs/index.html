@@ -3,77 +3,71 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>mcp-cortex-intelligent — Cortex Intelligent MCP</title>
+<title>mcp-cortex-intelligent — Documentation</title>
 <style>
-:root{--bg:#0a0e1a;--panel:#11162a;--neon:#00e5ff;--purple:#7c4dff;--text:#e6f1ff;--muted:#8aa0c8;--grid:rgba(0,229,255,.08);}
+:root{--bg:#f8fafc;--panel:#ffffff;--text:#1e293b;--muted:#64748b;--accent:#2563eb;--accent2:#0f766e;--border:#e2e8f0;--code:#0f172a;--codebg:#f1f5f9;}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
-body::before{content:"";position:fixed;inset:0;background:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
-.container{max-width:1100px;margin:0 auto;padding:2rem;position:relative;z-index:1}
-header{display:flex;align-items:center;gap:1.5rem;margin-bottom:2rem;flex-wrap:wrap}
-.logo{width:96px;height:96px;filter:drop-shadow(0 0 12px var(--neon))}
-h1{font-size:2.4rem;background:linear-gradient(90deg,var(--neon),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:2px}
-.tagline{color:var(--muted);font-size:1.1rem;margin-top:.25rem}
-.hero{background:linear-gradient(135deg,rgba(0,229,255,.06),rgba(124,77,255,.06));border:1px solid rgba(0,229,255,.25);border-radius:16px;padding:2rem;margin-bottom:2rem;position:relative;overflow:hidden}
-.hero::after{content:"";position:absolute;top:-50%;right:-20%;width:300px;height:300px;background:radial-gradient(circle,rgba(124,77,255,.25),transparent 70%);pointer-events:none}
-.hero p{max-width:760px;line-height:1.7;color:var(--muted)}
-.badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem}
-.badge{padding:.35rem .8rem;border:1px solid var(--neon);border-radius:999px;font-size:.8rem;color:var(--neon);background:rgba(0,229,255,.06)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:2rem}
-.card{background:var(--panel);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:1.25rem;transition:transform .2s,border-color .2s}
-.card:hover{transform:translateY(-4px);border-color:var(--neon)}
-.card h3{color:var(--neon);font-size:1.05rem;margin-bottom:.5rem}
-.card p{color:var(--muted);font-size:.9rem;line-height:1.6}
-.stats{display:flex;gap:2rem;flex-wrap:wrap;margin:1.5rem 0}
-.stat{background:rgba(0,229,255,.05);border-left:3px solid var(--neon);padding:.75rem 1.25rem;border-radius:4px}
-.stat b{display:block;font-size:1.6rem;color:var(--neon)}
-.stat span{color:var(--muted);font-size:.8rem}
-.tools{background:var(--panel);border:1px solid rgba(124,77,255,.25);border-radius:12px;padding:1.5rem;margin-bottom:2rem}
-.tools h2{color:var(--purple);margin-bottom:1rem}
-.tools table{width:100%;border-collapse:collapse;font-size:.85rem}
-.tools th,.tools td{padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.06);text-align:left}
-.tools th{color:var(--neon)}
-.code{background:#050810;border:1px solid rgba(0,229,255,.2);border-radius:8px;padding:1rem;font-family:Consolas,monospace;font-size:.85rem;overflow-x:auto;color:#a5f3fc;margin-bottom:2rem}
-footer{text-align:center;color:var(--muted);font-size:.8rem;padding:2rem 0;border-top:1px solid rgba(255,255,255,.06)}
-.mecha{position:fixed;bottom:20px;right:20px;width:120px;opacity:.15;pointer-events:none}
+body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:1080px;margin:0 auto;padding:2rem 1.5rem}
+header{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.logo{width:64px;height:64px;border-radius:12px}
+h1{font-size:2rem;color:var(--text)}
+.tagline{color:var(--muted);font-size:1.05rem;margin-top:.25rem}
+.nav{display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0 2rem;font-size:.9rem}
+.nav a{color:var(--muted)} .nav a:hover{color:var(--accent)}
+section{margin-bottom:2.5rem}
+h2{font-size:1.4rem;margin-bottom:.75rem;color:var(--text);border-bottom:2px solid var(--accent);padding-bottom:.35rem;display:inline-block}
+h3{font-size:1.1rem;margin:1rem 0 .4rem;color:var(--accent2)}
+p{margin:.5rem 0;color:var(--text)}
+ul,ol{margin:.5rem 0 1rem 1.5rem} li{margin:.25rem 0}
+.badges{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}
+.badge{padding:.3rem .7rem;border:1px solid var(--border);border-radius:999px;font-size:.78rem;color:var(--muted);background:#fff}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
+.code{background:var(--codebg);border:1px solid var(--border);border-radius:8px;padding:1rem;font-family:Consolas,monospace;font-size:.85rem;overflow-x:auto;color:var(--code);margin:.75rem 0}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin:.75rem 0}
+th,td{padding:.5rem .75rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+th{background:#f1f5f9;color:var(--accent);font-weight:600}
+tr:hover td{background:#f8fafc}
+footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem;text-align:center}
+@media(max-width:600px){h1{font-size:1.5rem}}
 </style>
 </head>
 <body>
-<svg class="mecha" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <g stroke="#00e5ff" stroke-width="2" fill="none">
-    <rect x="20" y="30" width="60" height="40" rx="6"/>
-    <circle cx="35" cy="50" r="6"/><circle cx="65" cy="50" r="6"/>
-    <rect x="40" y="15" width="20" height="15" rx="3"/>
-    <line x1="50" y1="70" x2="50" y2="90"/>
-  </g>
-</svg>
 <div class="container">
-  <header>
-    <img src="../assets/logo.svg" alt="logo" class="logo" onerror="this.style.display='none'"/>
-    <div>
-      <h1>MCP-CORTEX-INTELLIGENT</h1>
-      <div class="tagline">Make ordinary LLMs smarter — offline, no API keys, no external services.</div>
-    </div>
-  </header>
-
-  <section class="hero">
-    <p><strong>Cortex Intelligent</strong> is an MCP server that augments an ordinary LLM with context, procedures, memory, exemplars, verification, and an internal decision engine. Everything runs locally. No API keys. No cloud. No model gateway. The model becomes smarter by following structured guardrails and checking real execution feedback.</p>
-    <div class="badges">
-      <span class="badge">OFFLINE-FIRST</span>
-      <span class="badge">NO API KEYS</span>
-      <span class="badge">54 TOOLS</span>
-      <span class="badge">STDIO MCP</span>
-      <span class="badge">MIT LICENSE</span>
-    </div>
-  </section>
-
-  <div class="stats">
-    <div class="stat"><b>54</b><span>MCP Tools</span></div>
-    <div class="stat"><b>238</b><span>Tests Passing</span></div>
-    <div class="stat"><b>0</b><span>API Keys Required</span></div>
-    <div class="stat"><b>100%</b><span>Offline</span></div>
+<header>
+  <img src="../assets/logo.svg" alt="logo" class="logo"/>
+  <div>
+    <h1>mcp-cortex-intelligent</h1>
+    <div class="tagline">Make ordinary LLMs smarter — offline, no API keys, no external services.</div>
   </div>
+</header>
 
+<nav class="nav">
+  <a href="#overview">Overview</a>
+  <a href="#features">Features</a>
+  <a href="#install">Install</a>
+  <a href="#config">Configuration</a>
+  <a href="#tools">Tools</a>
+  <a href="#workflow">Workflow</a>
+  <a href="#security">Security</a>
+  <a href="#troubleshoot">Troubleshooting</a>
+</nav>
+
+<div class="badges">
+  <span class="badge">OFFLINE-FIRST</span>
+  <span class="badge">NO API KEYS</span>
+  <span class="badge">54 TOOLS</span>
+  <span class="badge">STDIO MCP</span>
+  <span class="badge">MIT LICENSE</span>
+  <span class="badge">Node >= 22.12</span>
+</div>
+
+<section id="overview">
+  <h2>Overview</h2>
+  <p><strong>Cortex Intelligent</strong> is an MCP server that augments an ordinary LLM with context, procedures, memory, exemplars, verification, and an internal decision engine. Everything runs locally. No API keys, no cloud, no model gateway. The model becomes smarter by following structured guardrails and checking real execution feedback.</p>
+  <p>It is a standard MCP server (stdio transport), compatible with OpenCode, Claude Desktop, Cursor, VS Code, and any MCP client.</p>
   <div class="grid">
     <div class="card"><h3>Auto-Provision Agent & Skill</h3><p>Idempotent marker-block append. Never overwrites user content. Backup before write.</p></div>
     <div class="card"><h3>Model Awareness + Guardrails</h3><p>Detects model tier (weak/medium/strong) and injects anti-blunder procedures.</p></div>
@@ -82,34 +76,143 @@ footer{text-align:center;color:var(--muted);font-size:.8rem;padding:2rem 0;borde
     <div class="card"><h3>Plan & Task Management</h3><p>AGENT → SKILL → PLAN → TASK ↔ EXECUTE → DONE. Persistent task tracking.</p></div>
     <div class="card"><h3>Knowledge Base + Memory</h3><p>Hybrid search (BM25 + vector + RRF), long-term memory with decay.</p></div>
   </div>
+</section>
 
-  <div class="tools">
-    <h2>Tool Groups</h2>
-    <table>
-      <tr><th>Group</th><th>Count</th><th>Examples</th></tr>
-      <tr><td>System</td><td>2</td><td>system_stats, cognitive_status</td></tr>
-      <tr><td>Provisioning</td><td>4</td><td>bootstrap_session, provision_agent_skill</td></tr>
-      <tr><td>Model</td><td>5</td><td>detect_model, get_guardrails, model_decision</td></tr>
-      <tr><td>Knowledge</td><td>11</td><td>knowledge_search, knowledge_retrieve, knowledge_backup</td></tr>
-      <tr><td>Memory</td><td>9</td><td>memory_remember, memory_recall, memory_consolidate</td></tr>
-      <tr><td>Cognitive</td><td>3</td><td>self_critique, score_compliance, run_verification</td></tr>
-      <tr><td>Decision</td><td>2</td><td>decision_classify, decision_health</td></tr>
-      <tr><td>Procedure</td><td>5</td><td>get_procedure, retrieve_exemplars, ingest_exemplar</td></tr>
-      <tr><td>Plan & Task</td><td>13</td><td>init_plan, task_create, task_done, task_sync_md</td></tr>
-    </table>
+<section id="install">
+  <h2>Installation</h2>
+  <h3>Requirements</h3>
+  <ul>
+    <li>Node.js >= 22.12 (for node:sqlite)</li>
+    <li>npm</li>
+  </ul>
+  <h3>From source</h3>
+  <div class="code">git clone https://github.com/adyoi/mcp-cortex-intelligent.git
+cd mcp-cortex-intelligent
+npm install
+npm run build
+npm start</div>
+  <h3>From npm (after publish)</h3>
+  <div class="code">npx mcp-cortex-intelligent</div>
+</section>
+
+<section id="config">
+  <h2>Configuration</h2>
+  <p>Copy <code>.env.example</code> to <code>.env</code> and edit. Environment variables always win over the file.</p>
+  <table>
+    <tr><th>Variable</th><th>Default</th><th>Purpose</th></tr>
+    <tr><td>CORTEX_DB_DIR</td><td>.cortex-data</td><td>SQLite store location</td></tr>
+    <tr><td>CORTEX_MODEL</td><td>(auto)</td><td>Override model</td></tr>
+    <tr><td>CORTEX_TIER_OVERRIDE</td><td>(auto)</td><td>Override tier</td></tr>
+    <tr><td>CORTEX_VERIFY_ALLOWLIST</td><td>npm test,npm run lint,npm run typecheck</td><td>Verification commands</td></tr>
+    <tr><td>CORTEX_VERIFY_TIMEOUT_MS</td><td>300000</td><td>Verification timeout</td></tr>
+    <tr><td>CORTEX_SELF_CRITIQUE_THRESHOLD</td><td>0.8</td><td>Revision threshold</td></tr>
+    <tr><td>CORTEX_SELF_CRITIQUE_MAX_ITERS</td><td>3</td><td>Max self-critique iterations</td></tr>
+    <tr><td>CORTEX_PROVISION_BACKUP</td><td>1</td><td>Backup before write</td></tr>
+    <tr><td>CORTEX_GUARDRAILS_STRICT</td><td>1</td><td>Enforce guardrails</td></tr>
+    <tr><td>EMBEDDING_PROVIDER</td><td>local</td><td>local / transformers</td></tr>
+    <tr><td>EMBEDDING_MODEL</td><td>Xenova/all-MiniLM-L6-v2</td><td>Embedding model</td></tr>
+    <tr><td>SEARCH_MODE</td><td>hybrid</td><td>hybrid / vector / keyword</td></tr>
+    <tr><td>KB_MEMORY_HALF_LIFE_DAYS</td><td>14</td><td>Memory decay half-life</td></tr>
+  </table>
+  <h3>OpenCode registration</h3>
+  <p>Add to <code>~/.config/opencode/opencode.json</code>:</p>
+  <div class="code">{
+  "mcp": {
+    "cortex": {
+      "type": "local",
+      "command": ["node", "D:/Project/mcp/dist/index.js"],
+      "cwd": "D:/Project/mcp",
+      "environment": { "CORTEX_DB_DIR": "D:/Project/mcp/.cortex-data" }
+    }
+  }
+}</div>
+</section>
+
+<section id="tools">
+  <h2>Tools (54)</h2>
+  <table>
+    <tr><th>Group</th><th>Count</th><th>Tools</th></tr>
+    <tr><td>System</td><td>2</td><td>system_stats, cognitive_status</td></tr>
+    <tr><td>Provisioning</td><td>4</td><td>bootstrap_session, provision_agent_skill, list_agents_skills, update_procedure_block</td></tr>
+    <tr><td>Model</td><td>5</td><td>detect_model, get_model_profile, set_model, get_guardrails, model_decision</td></tr>
+    <tr><td>Knowledge</td><td>11</td><td>knowledge_ingest_text, knowledge_ingest_file, knowledge_ingest_dir, knowledge_search, knowledge_retrieve, knowledge_list_documents, knowledge_document_stats, knowledge_delete_document, knowledge_sync_session, knowledge_reindex, knowledge_backup</td></tr>
+    <tr><td>Memory</td><td>9</td><td>memory_remember, memory_recall, memory_context, memory_list, memory_get, memory_update, memory_forget, memory_consolidate, memory_stats</td></tr>
+    <tr><td>Cognitive</td><td>3</td><td>self_critique, score_compliance, run_verification</td></tr>
+    <tr><td>Decision</td><td>2</td><td>decision_classify, decision_health</td></tr>
+    <tr><td>Procedure</td><td>5</td><td>get_procedure, list_procedures, ingest_procedure, retrieve_exemplars, ingest_exemplar</td></tr>
+    <tr><td>Plan & Task</td><td>13</td><td>init_plan, read_plan, update_plan_section, init_task, task_create, task_list, task_get, task_start, task_done, task_block, task_delete, task_sync_md, task_summary</td></tr>
+  </table>
+</section>
+
+<section id="workflow">
+  <h2>Workflow</h2>
+  <h3>Bootstrap Session</h3>
+  <ol>
+    <li>Call <code>bootstrap_session(project_root)</code>.</li>
+    <li>Detect model → <code>model_decision</code> → set session state.</li>
+    <li>Provision agent & skill (append if exists).</li>
+    <li>Inject guardrails via <code>get_guardrails(task="session_start")</code>.</li>
+  </ol>
+  <h3>Task Execution</h3>
+  <ol>
+    <li><code>get_guardrails(task_type)</code> → checklist.</li>
+    <li><code>retrieve_exemplars(task)</code> → best examples.</li>
+    <li>Plan → Read → Edit → Verify → Review.</li>
+    <li><code>run_verification()</code> → real feedback.</li>
+    <li><code>score_compliance(plan)</code> + <code>self_critique(artifact)</code>.</li>
+  </ol>
+  <h3>Plan & Task Loop</h3>
+  <ol>
+    <li><code>init_plan</code> + <code>init_task</code>.</li>
+    <li>Agent reads PLAN.md → picks next task.</li>
+    <li><code>task_list(status="todo")</code> → choose.</li>
+    <li><code>task_start(id)</code> → doing.</li>
+    <li>Execute with guardrails + verification.</li>
+    <li><code>task_done(id)</code> after verification passes.</li>
+    <li><code>task_sync_md()</code> → write TASK.md.</li>
+  </ol>
+</section>
+
+<section id="security">
+  <h2>Security</h2>
+  <ul>
+    <li>Secrets are never stored (no-secret rule).</li>
+    <li>Verification runner uses allowlist, locked cwd, timeout, minimal env.</li>
+    <li>Provisioning restricted to <code>.opencode/</code> under project root.</li>
+    <li>Backup before overwrite; idempotent writes.</li>
+    <li>100% offline, no network calls.</li>
+  </ul>
+</section>
+
+<section id="troubleshoot">
+  <h2>Troubleshooting</h2>
+  <div class="card">
+    <h3>Tools not showing up</h3>
+    <p>Check config filename (<code>opencode.json</code>), location (global: <code>~/.config/opencode/opencode.json</code>), <code>cwd</code>, and <code>CORTEX_DB_DIR</code>. Restart OpenCode.</p>
   </div>
+  <div class="card">
+    <h3>Slow first start</h3>
+    <p>tsx compiles TypeScript on first run; subsequent calls are fast. Use compiled <code>dist/</code> entry.</p>
+  </div>
+  <div class="card">
+    <h3>Verification runner blocked</h3>
+    <p>Only allowlisted commands run. Adjust <code>CORTEX_VERIFY_ALLOWLIST</code>.</p>
+  </div>
+</section>
 
-  <div class="code">
-$ npm install
-$ npm run build
-$ npm start
-# or register in opencode.json:
-# { "mcp": { "cortex": { "type":"local","command":["node","D:/Project/mcp/dist/index.js"],"cwd":"D:/Project/mcp","environment":{"CORTEX_DB_DIR":"D:/Project/mcp/.cortex-data"} } } }
+<section>
+  <h2>Development</h2>
+  <div class="code">npm install
+npm run typecheck
+npm run lint
+npm run build
+npm test
+npm start
   </div>
 
   <footer>
     mcp-cortex-intelligent — MIT License — Built for OpenCode & any MCP client.<br/>
-    <a href="https://github.com/adyoi/mcp-cortex-intelligent" style="color:var(--neon)">GitHub</a>
+    <a href="https://github.com/adyoi/mcp-cortex-intelligent" style="color:var(--accent)">GitHub</a>
   </footer>
 </div>
 </body>
