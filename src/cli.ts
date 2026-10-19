@@ -39,6 +39,12 @@ import { remember, recall, listMemories, getMemory, updateMemory, forget, consol
 import { ingestSession, ingestJsonlFile, ingestLogDir, ingestLatest, listOpenCodeSessions } from "./session/transcript.js";
 import { reindex } from "./knowledge/reindex.js";
 import { closeDB, STORAGE_DIR, backupStore, restoreStore } from "./db/database.js";
+import { detectModel, tierOf } from "./model/resolver.js";
+import { getGuardrails } from "./model/guardrails.js";
+import { initPlan, initTask, taskSummary, taskSyncMd } from "./plantask/manager.js";
+import { provision } from "./provisioner/marker-block.js";
+import { agentAutoBlock, agentPath, AGENT_VERSION } from "./provisioner/agent-generator.js";
+import { skillAutoBlock, skillPath, SKILL_VERSION } from "./provisioner/skill-generator.js";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -54,7 +60,7 @@ async function main() {
 }
 
 function helpText(): string {
-  return `Commands: ingest-text|ingest-file|ingest-dir|search|retrieve|docs|doc-stats|rm-doc|remember|recall|memory-list|memory-get|memory-update|forget|consolidate|memory-stats|mem-context|stats|reindex|backup|restore|sessions|sync-session|sync-latest|sync-logs|ingest-jsonl`;
+  return `Commands: ingest-text|...|bootstrap|context|guardrails|task-summary|task-sync (see full list in source)`;
 }
 
 function assertMemoryType(type: string): asserts type is (typeof MEMORY_TYPES)[number] {
@@ -245,6 +251,38 @@ async function run(cmd: string, args: string[]) {
       case "ingest-jsonl":
         out = await ingestJsonlFile(requireArg(args[0], "ingest-jsonl <file>"));
         break;
+      case "bootstrap": {
+        const root = args[0] ?? process.cwd();
+        const model = detectModel({ env: process.env, projectRoot: root });
+        const tier = tierOf(model);
+        provision(agentPath(root), agentAutoBlock(), AGENT_VERSION);
+        provision(skillPath(root), skillAutoBlock(), SKILL_VERSION);
+        initPlan(root);
+        initTask(root);
+        out = { model, tier, provisioned: true, root };
+        break;
+      }
+      case "context": {
+        const parsed = parseOpts(args);
+        const topic = queryArg(parsed.positional) || "general";
+        out = await contextPrompt(topic, toNum(parsed.opts["top-k"], 6));
+        break;
+      }
+      case "guardrails": {
+        const parsed = parseOpts(args);
+        const task = queryArg(parsed.positional) || "session_start";
+        const model = detectModel({ env: process.env });
+        out = getGuardrails(model, task);
+        break;
+      }
+      case "task-summary":
+        out = taskSummary();
+        break;
+      case "task-sync": {
+        const root = args[0] ?? process.cwd();
+        out = taskSyncMd(root);
+        break;
+      }
       default:
         console.error(`Unknown command: ${cmd}`);
         console.error(helpText());

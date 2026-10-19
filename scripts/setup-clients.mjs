@@ -35,6 +35,10 @@ mergeJson(path.join(home, ".config", "opencode", "opencode.json"), (o) => {
   o.instructions = Array.isArray(o.instructions) ? o.instructions : [];
   const instr = ROOT + "/.opencode/instructions.md";
   if (!o.instructions.includes(instr)) o.instructions.push(instr);
+  o.plugins = Array.isArray(o.plugins) ? o.plugins : [];
+  const p1 = "file:///D:/Project/mcp-server/.opencode/plugin/session-logger.ts";
+  const p2 = "file:///D:/Project/mcp/.opencode/plugins/cortex-auto/index.ts";
+  for (const p of [p1, p2]) if (!o.plugins.includes(p)) o.plugins.push(p);
 });
 
 // 2. Claude Desktop
