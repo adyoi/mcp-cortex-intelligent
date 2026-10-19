@@ -18,6 +18,15 @@ try {
   db.prepare("DELETE FROM chunks_fts").run();
   db.prepare("DELETE FROM documents").run();
   db.prepare("DELETE FROM memories").run();
+  db.prepare("DELETE FROM procedures").run();
+  db.prepare("DELETE FROM exemplars").run();
+  db.prepare("DELETE FROM tasks").run();
+  db.prepare("DELETE FROM cognitive_scores").run();
+  db.prepare("DELETE FROM decisions").run();
+  db.prepare("DELETE FROM telemetry").run();
+  db.prepare("DELETE FROM verification_runs").run();
+  db.prepare("DELETE FROM session_state").run();
+  db.prepare("DELETE FROM model_profiles").run();
   db.exec("COMMIT;");
 } catch (e) {
   try {

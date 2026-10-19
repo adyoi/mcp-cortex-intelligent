@@ -739,7 +739,9 @@ server.registerTool(
   "cognitive_status",
   { description: "Cognitive status summary for the current session.", inputSchema: {} },
   async () => {
-    return { content: [{ type: "text", text: JSON.stringify({ model: detectModel({ env: process.env }), tier: tierOf(detectModel({ env: process.env })), status: "ok" }) }] };
+    const model = detectModel({ env: process.env });
+    const ts = (await import("../plantask/manager.js")).taskSummary();
+    return { content: [{ type: "text", text: JSON.stringify({ model, tier: tierOf(model), status: "ok", tasks: ts }) }] };
   }
 );
 

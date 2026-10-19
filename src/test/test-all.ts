@@ -520,6 +520,32 @@ async function main() {
     const mStats = await client.callTool({ name: "memory_stats", arguments: {} });
     check("memory_stats works over MCP", JSON.parse(toolText(mStats)).memories > 0);
 
+    /* Cortex tools smoke */
+    const cTools = await client.listTools();
+    const cNames = cTools.tools.map((t) => t.name);
+    check("cortex tools registered (>= 54)", cNames.length >= 54, String(cNames.length));
+    async function ccall(name: string, args: Record<string, unknown> = {}) {
+      try { const r = await client.callTool({ name, arguments: args }); return toolText(r); }
+      catch (e) { return "ERR:" + (e as Error).message; }
+    }
+    const dg = await ccall("detect_model", { model: "claude-haiku" });
+    check("detect_model works", dg.includes("weak"), dg);
+    const sc = await ccall("self_critique", { artifact: "npm test\\nread file" });
+    check("self_critique works", sc.includes("score"), sc);
+    const cs = await ccall("task_create", { title: "smoke task" });
+    const smokeTaskId = (() => { try { return JSON.parse(cs).id; } catch { return ""; } })();
+    check("task_create works", smokeTaskId.startsWith("task-"), cs);
+    if (smokeTaskId) {
+      check("task_start works", (await ccall("task_start", { id: smokeTaskId })).includes("true"), "");
+      check("task_done works", (await ccall("task_done", { id: smokeTaskId })).includes("true"), "");
+    }
+    const summ = await ccall("task_summary", {});
+    check("task_summary works", summ.includes("total"), summ);
+    const ip = await ccall("init_plan", { project_root: ROOT });
+    check("init_plan works", ip.includes("path"), ip);
+    const it = await ccall("init_task", { project_root: ROOT });
+    check("init_task works", it.includes("path"), it);
+
     await client.close();
     check("MCP client closed cleanly", true);
   } catch (e) {
