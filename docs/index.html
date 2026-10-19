@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>mcp-cortex-intelligent — Cortex Intelligent MCP</title>
+<style>
+:root{--bg:#0a0e1a;--panel:#11162a;--neon:#00e5ff;--purple:#7c4dff;--text:#e6f1ff;--muted:#8aa0c8;--grid:rgba(0,229,255,.08);}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.container{max-width:1100px;margin:0 auto;padding:2rem;position:relative;z-index:1}
+header{display:flex;align-items:center;gap:1.5rem;margin-bottom:2rem;flex-wrap:wrap}
+.logo{width:96px;height:96px;filter:drop-shadow(0 0 12px var(--neon))}
+h1{font-size:2.4rem;background:linear-gradient(90deg,var(--neon),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:2px}
+.tagline{color:var(--muted);font-size:1.1rem;margin-top:.25rem}
+.hero{background:linear-gradient(135deg,rgba(0,229,255,.06),rgba(124,77,255,.06));border:1px solid rgba(0,229,255,.25);border-radius:16px;padding:2rem;margin-bottom:2rem;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;top:-50%;right:-20%;width:300px;height:300px;background:radial-gradient(circle,rgba(124,77,255,.25),transparent 70%);pointer-events:none}
+.hero p{max-width:760px;line-height:1.7;color:var(--muted)}
+.badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem}
+.badge{padding:.35rem .8rem;border:1px solid var(--neon);border-radius:999px;font-size:.8rem;color:var(--neon);background:rgba(0,229,255,.06)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:2rem}
+.card{background:var(--panel);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:1.25rem;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-4px);border-color:var(--neon)}
+.card h3{color:var(--neon);font-size:1.05rem;margin-bottom:.5rem}
+.card p{color:var(--muted);font-size:.9rem;line-height:1.6}
+.stats{display:flex;gap:2rem;flex-wrap:wrap;margin:1.5rem 0}
+.stat{background:rgba(0,229,255,.05);border-left:3px solid var(--neon);padding:.75rem 1.25rem;border-radius:4px}
+.stat b{display:block;font-size:1.6rem;color:var(--neon)}
+.stat span{color:var(--muted);font-size:.8rem}
+.tools{background:var(--panel);border:1px solid rgba(124,77,255,.25);border-radius:12px;padding:1.5rem;margin-bottom:2rem}
+.tools h2{color:var(--purple);margin-bottom:1rem}
+.tools table{width:100%;border-collapse:collapse;font-size:.85rem}
+.tools th,.tools td{padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.06);text-align:left}
+.tools th{color:var(--neon)}
+.code{background:#050810;border:1px solid rgba(0,229,255,.2);border-radius:8px;padding:1rem;font-family:Consolas,monospace;font-size:.85rem;overflow-x:auto;color:#a5f3fc;margin-bottom:2rem}
+footer{text-align:center;color:var(--muted);font-size:.8rem;padding:2rem 0;border-top:1px solid rgba(255,255,255,.06)}
+.mecha{position:fixed;bottom:20px;right:20px;width:120px;opacity:.15;pointer-events:none}
+</style>
+</head>
+<body>
+<svg class="mecha" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#00e5ff" stroke-width="2" fill="none">
+    <rect x="20" y="30" width="60" height="40" rx="6"/>
+    <circle cx="35" cy="50" r="6"/><circle cx="65" cy="50" r="6"/>
+    <rect x="40" y="15" width="20" height="15" rx="3"/>
+    <line x1="50" y1="70" x2="50" y2="90"/>
+  </g>
+</svg>
+<div class="container">
+  <header>
+    <img src="../assets/logo.svg" alt="logo" class="logo" onerror="this.style.display='none'"/>
+    <div>
+      <h1>MCP-CORTEX-INTELLIGENT</h1>
+      <div class="tagline">Make ordinary LLMs smarter — offline, no API keys, no external services.</div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <p><strong>Cortex Intelligent</strong> is an MCP server that augments an ordinary LLM with context, procedures, memory, exemplars, verification, and an internal decision engine. Everything runs locally. No API keys. No cloud. No model gateway. The model becomes smarter by following structured guardrails and checking real execution feedback.</p>
+    <div class="badges">
+      <span class="badge">OFFLINE-FIRST</span>
+      <span class="badge">NO API KEYS</span>
+      <span class="badge">54 TOOLS</span>
+      <span class="badge">STDIO MCP</span>
+      <span class="badge">MIT LICENSE</span>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="stat"><b>54</b><span>MCP Tools</span></div>
+    <div class="stat"><b>238</b><span>Tests Passing</span></div>
+    <div class="stat"><b>0</b><span>API Keys Required</span></div>
+    <div class="stat"><b>100%</b><span>Offline</span></div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h3>Auto-Provision Agent & Skill</h3><p>Idempotent marker-block append. Never overwrites user content. Backup before write.</p></div>
+    <div class="card"><h3>Model Awareness + Guardrails</h3><p>Detects model tier (weak/medium/strong) and injects anti-blunder procedures.</p></div>
+    <div class="card"><h3>Offline Cognitive Augmentor</h3><p>Exemplar retrieval, structured self-critique, compliance scoring, verification runner.</p></div>
+    <div class="card"><h3>Internal Decision Engine</h3><p>Fast deterministic decisions (tier/risk/route/compliance) via heuristics. No LLM.</p></div>
+    <div class="card"><h3>Plan & Task Management</h3><p>AGENT → SKILL → PLAN → TASK ↔ EXECUTE → DONE. Persistent task tracking.</p></div>
+    <div class="card"><h3>Knowledge Base + Memory</h3><p>Hybrid search (BM25 + vector + RRF), long-term memory with decay.</p></div>
+  </div>
+
+  <div class="tools">
+    <h2>Tool Groups</h2>
+    <table>
+      <tr><th>Group</th><th>Count</th><th>Examples</th></tr>
+      <tr><td>System</td><td>2</td><td>system_stats, cognitive_status</td></tr>
+      <tr><td>Provisioning</td><td>4</td><td>bootstrap_session, provision_agent_skill</td></tr>
+      <tr><td>Model</td><td>5</td><td>detect_model, get_guardrails, model_decision</td></tr>
+      <tr><td>Knowledge</td><td>11</td><td>knowledge_search, knowledge_retrieve, knowledge_backup</td></tr>
+      <tr><td>Memory</td><td>9</td><td>memory_remember, memory_recall, memory_consolidate</td></tr>
+      <tr><td>Cognitive</td><td>3</td><td>self_critique, score_compliance, run_verification</td></tr>
+      <tr><td>Decision</td><td>2</td><td>decision_classify, decision_health</td></tr>
+      <tr><td>Procedure</td><td>5</td><td>get_procedure, retrieve_exemplars, ingest_exemplar</td></tr>
+      <tr><td>Plan & Task</td><td>13</td><td>init_plan, task_create, task_done, task_sync_md</td></tr>
+    </table>
+  </div>
+
+  <div class="code">
+$ npm install
+$ npm run build
+$ npm start
+# or register in opencode.json:
+# { "mcp": { "cortex": { "type":"local","command":["node","D:/Project/mcp/dist/index.js"],"cwd":"D:/Project/mcp","environment":{"CORTEX_DB_DIR":"D:/Project/mcp/.cortex-data"} } } }
+  </div>
+
+  <footer>
+    mcp-cortex-intelligent — MIT License — Built for OpenCode & any MCP client.<br/>
+    <a href="https://github.com/adyoi/mcp-cortex-intelligent" style="color:var(--neon)">GitHub</a>
+  </footer>
+</div>
+</body>
+</html>

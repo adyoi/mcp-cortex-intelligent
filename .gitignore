@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.cortex-data/
+.test-data/
+.smoke-data*/
+.env
+*.bak-*
+*.sqlite
+*.sqlite-*
+.DS_Store
+Thumbs.db
+coverage/

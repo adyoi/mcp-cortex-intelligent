@@ -1,0 +1,1152 @@
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, "..", "..");
+const TEST_DB = path.join(ROOT, ".test-data");
+
+// Route all db writes into a temp dir, and prep the studio subprocess too.
+process.env.CORTEX_DB_DIR = TEST_DB;
+
+// Track test results
+let passed = 0;
+let failed = 0;
+const failures: string[] = [];
+
+function check(name: string, condition: unknown, detail?: string) {
+  if (condition) {
+    passed++;
+    console.log(`  ✅ ${name}`);
+  } else {
+    failed++;
+    failures.push(name);
+    console.log(`  ❌ ${name}${detail ? ` — ${detail}` : ""}`);
+  }
+}
+
+/** Extract the text payload from an MCP tool result, tolerating SDK typing quirks. */
+function toolText(res: unknown): string {
+  const content = (res as { content?: Array<Record<string, unknown>> } | undefined)?.content;
+  const first = content?.[0];
+  return first && typeof first.text === "string" ? first.text : "";
+}
+
+/** True when fn throws/rejects — used for guard checks. */
+async function rejects(fn: () => unknown, match?: RegExp): Promise<boolean> {
+  try {
+    await fn();
+    return false;
+  } catch (e) {
+    return match ? match.test((e as Error).message) : true;
+  }
+}
+
+async function main() {
+  console.log("=== CORTEX INTELLIGENT TEST SUITE ===\n");
+
+  fs.rmSync(TEST_DB, { recursive: true, force: true });
+
+  // Dynamic imports so the modules bind to TEST_DB.
+  const { getDB, packVector, unpackVector, DB_PATH } = await import("../db/database.js");
+  const { embed, cosineSimilarity, dotProduct, EMBED_DIM } = await import("../knowledge/embedder.js");
+  const { chunkText } = await import("../knowledge/chunker.js");
+  const kb = await import("../knowledge/pipeline.js");
+  const mem = await import("../memory/memory.js");
+
+  /* ================== 1. DB LAYER ================== */
+  console.log("\n=== 1. Database Layer ===");
+  const db = getDB();
+  const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as Array<{ name: string }>).map((t) => t.name);
+  check("tables created", ["documents", "chunks", "memories", "chunks_fts", "meta"].every((t) => tables.includes(t)), tables.join(","));
+  check("DB file created on disk", fs.existsSync(DB_PATH));
+  check("DB in test dir", DB_PATH.startsWith(TEST_DB));
+
+  const vec = new Float64Array([0.1, 0.2, 0.3, -0.5, 0.9]);
+  const packed = packVector(vec);
+  const unpacked = unpackVector(packed);
+  check("packVector/unpackVector roundtrip", unpacked !== null && unpacked.length === vec.length && unpacked[4] === 0.9);
+
+  /* ================== 2. EMBEDDER ================== */
+  console.log("\n=== 2. Embedder (local hashing) ===");
+  const e1 = embed("fetch weather data for Jakarta");
+  const e2 = embed("fetch weather data for Jakarta");
+  const eDiff = embed("buy groceries at the supermarket");
+  check("embed is deterministic", Array.from(e1).every((v, i) => v === e2[i]));
+  check("embed has correct dim", e1.length === EMBED_DIM);
+  check("embed is normalized", Math.abs(1 - (() => { let s = 0; for (const v of e1) s += v * v; return Math.sqrt(s); })()) < 1e-9);
+  check("similar text scores higher", cosineSimilarity(e1, e2) > cosineSimilarity(e1, eDiff));
+  check("dotProduct == cosine for normalized vectors", Math.abs(dotProduct(e1, e2) - cosineSimilarity(e1, e2)) < 1e-9);
+  const cjk1 = embed("该引擎支持中文检索");
+  const cjk2 = embed("该引擎支持中文检索");
+  check("CJK text embeds", cosineSimilarity(cjk1, cjk2) > 0.99);
+
+  /* ================== 3. CHUNKER ================== */
+  console.log("\n=== 3. Chunker ===");
+  const longText = Array.from({ length: 30 }, (_, i) => `Paragraph ${i}: The quick brown fox jumps over the lazy dog near the river bank of Jakarta. This sentence provides additional detail for chunking tests.`).join("\n\n");
+  const chunks = chunkText(longText);
+  check("long text split into multiple chunks", chunks.length > 1, `got ${chunks.length}`);
+  check("no chunk is empty", chunks.every((c) => c.text.trim().length > 0));
+  check("chunks have overlap context", chunks.some((c) => c.text.includes("river bank")));
+  check("each chunk under max size", chunks.every((c) => c.text.length <= 950));
+  const sourceReconstruction = chunks.map((c) => c.text).join("");
+  check("content preserved", Array.from(sourceReconstruction).length > Array.from(longText).length * 0.9);
+  check("indexes sequential", chunks.every((c, i) => c.index === i));
+  check("token estimation positive", chunks.every((c) => c.tokenCount > 0));
+
+  /* ================== 4. KNOWLEDGE PIPELINE ================== */
+  console.log("\n=== 4. Knowledge Pipeline ===");
+  const doc1 = await kb.ingestText(
+    "The authentication service uses JWT tokens, RSA signing with a 4096-bit key, and sessions expire after 30 minutes.",
+    "Auth architecture"
+  );
+  const doc2 = await kb.ingestText(
+    "Database migrations are handled with Prisma. The main schema lives in prisma/schema.prisma and there are 42 tables.",
+    "DB setup",
+    { contentType: "markdown", metadata: { project: "core" } }
+  );
+  check("ingestText returns doc id", typeof doc1.docId === "string" && doc1.docId.length > 0);
+  check("ingestText created chunks", doc1.chunks >= 1, `chunks=${doc1.chunks}`);
+  check("ingestText counts tokens", doc1.tokens > 0);
+  check("ingestText not deduplicated on first insert", doc1.deduplicated === false);
+
+  const s1 = await kb.searchDocs("jwt authentication RSA", 5);
+  check("search finds auth doc first", s1.length > 0 && s1[0].docTitle === "Auth architecture", JSON.stringify(s1[0]));
+  check("search returns scores", s1.every((h) => h.score > 0));
+  check("search results include docTitle", s1.every((h) => h.docTitle));
+  check("search hits include tokenCount", s1.length > 0 && s1.every((h) => typeof h.tokenCount === "number" && h.tokenCount > 0));
+
+  const s2 = await kb.searchDocs("prisma migration tables", 5);
+  check("search finds db doc ", s2.length > 0 && s2[0].docTitle === "DB setup");
+
+  const sFiltered = await kb.searchDocs("jwt authentication RSA", 5, 0.08, { source: "scratch" });
+  check("search filter: source narrows results", sFiltered.length === 0, JSON.stringify(sFiltered));
+
+  const authDocId = kb.listDocuments().documents.find((d) => d.title === "Auth architecture")?.id as string;
+  const sDocFiltered = await kb.searchDocs("jwt authentication RSA", 5, 0.08, { docId: authDocId });
+  check("search filter: doc_id keeps only that document", sDocFiltered.length > 0 && sDocFiltered.every((h) => h.docId === authDocId && h.docTitle === "Auth architecture"), JSON.stringify(sDocFiltered[0] ?? null));
+
+  const retrieved = await kb.retrieve("how is jwt signing configured", 3);
+  check("retrieve returns context", retrieved.chunks.length > 0);
+  check("retrieve reports tokens", retrieved.totalTokens >= retrieved.chunks[0]?.tokenCount);
+  check("retrieve ranks auth content", retrieved.chunks[0]?.content.includes("JWT"), retrieved.chunks[0]?.content);
+
+  const docs = kb.listDocuments();
+  check("listDocuments returns 2 docs", docs.documents.length === 2 && docs.total === 2);
+  check("listDocuments paginates", kb.listDocuments({ limit: 1 }).documents.length === 1 && kb.listDocuments({ limit: 1 }).total === 2);
+  check("listDocuments offset skips", kb.listDocuments({ limit: 1, offset: 1 }).documents[0]?.id !== docs.documents[0]?.id);
+  check("listDocuments clamps limit", kb.listDocuments({ limit: 10_000 }).total === 2);
+  const stats = await kb.documentStats();
+  check("documentStats correct", stats.documents === 2 && stats.chunks === doc1.chunks + doc2.chunks, JSON.stringify(stats));
+
+  // Content-hash dedup.
+  const dupText = "Deduplication marker content alpha beta gamma.";
+  const d1 = await kb.ingestText(dupText, "Dup first");
+  const d2 = await kb.ingestText(dupText, "Dup second");
+  check("dedup returns existing doc id", d2.deduplicated === true && d2.docId === d1.docId);
+  check("dedup reuses chunk count", d2.chunks === d1.chunks);
+  const statsAfterDup = await kb.documentStats();
+  check("dedup does not grow store", statsAfterDup.documents === stats.documents + 1 && statsAfterDup.chunks === stats.chunks + d1.chunks, JSON.stringify(statsAfterDup));
+  await kb.deleteDocument(d1.docId);
+  const statsAfterDupDelete = await kb.documentStats();
+  check("dedup doc deletable", statsAfterDupDelete.documents === stats.documents);
+
+  let emptyGuardHit = false;
+  try {
+    await kb.ingestText("", "empty doc");
+  } catch (e) {
+    emptyGuardHit = (e as Error).message.includes("non-empty");
+  }
+  check("ingestText rejects empty content", emptyGuardHit);
+
+  // Hybrid / keyword search modes.
+  const kwDoc = await kb.ingestText(
+    "The zzzqx hypertesting marker appears exclusively inside this single document body.",
+    "Hybrid marker"
+  );
+  const prevMode = process.env.SEARCH_MODE;
+  process.env.SEARCH_MODE = "keyword";
+  const kw = await kb.searchDocs("zzzqx", 5);
+  check("keyword (FTS5) search finds exact term", kw.length > 0 && kw[0].docTitle === "Hybrid marker", JSON.stringify(kw[0] ?? null));
+  process.env.SEARCH_MODE = "vector";
+  const vh = await kb.searchDocs("zzzqx hypertesting", 5);
+  check("vector search still works", vh.length >= 1, JSON.stringify(vh.length));
+  process.env.SEARCH_MODE = "hybrid";
+  const hy = await kb.searchDocs("zzzqx hypertesting", 5);
+  check("hybrid search returns marker doc", hy.length >= 1 && hy.some((h) => h.docTitle === "Hybrid marker"));
+  if (prevMode === undefined) delete process.env.SEARCH_MODE;
+  else process.env.SEARCH_MODE = prevMode;
+  await kb.deleteDocument(kwDoc.docId);
+
+  // ingestFile + size guard.
+  const fPath = path.join(ROOT, "src/test/sample.md");
+  fs.writeFileSync(fPath, "# Sample\n\nThe rate limiter allows 100 requests per second per API key.");
+  const doc3 = await kb.ingestFile(fPath);
+  check("ingestFile works", doc3.chunks >= 1);
+  check("ingestFile detects markdown", doc3.title === "sample.md");
+  fs.rmSync(fPath);
+
+  const bigPath = path.join(TEST_DB, "big.ts");
+  fs.writeFileSync(bigPath, "x".repeat(4096));
+  process.env.KB_MAX_FILE_MB = "0.0005";
+  let sizeGuardHit = false;
+  try {
+    await kb.ingestFile(bigPath);
+  } catch (e) {
+    sizeGuardHit = (e as Error).message.includes("too large");
+  }
+  check("size guard rejects large files", sizeGuardHit);
+  delete process.env.KB_MAX_FILE_MB;
+
+  // KB_ALLOWED_DIRS allowlist.
+  const okPath = path.join(TEST_DB, "ok.ts");
+  fs.writeFileSync(okPath, "allowlisted content one two three.");
+  const blkPath = path.join(ROOT, "src/test/blk.ts");
+  fs.writeFileSync(blkPath, "blocked content four five six.");
+  process.env.KB_ALLOWED_DIRS = TEST_DB;
+  let allowGuardHit = false;
+  try {
+    await kb.ingestFile(blkPath);
+  } catch (e) {
+    allowGuardHit = (e as Error).message.includes("not allowed");
+  }
+  check("allowlist blocks outside paths", allowGuardHit);
+  const okDoc = await kb.ingestFile(okPath);
+  check("allowlist allows inside paths", okDoc.docId !== undefined);
+  await kb.deleteDocument(okDoc.docId);
+  delete process.env.KB_ALLOWED_DIRS;
+  fs.unlinkSync(blkPath);
+  fs.unlinkSync(bigPath);
+
+  const d = await kb.deleteDocument(doc3.docId);
+  check("deleteDocument works", d.deleted === true);
+  const docsAfter = kb.listDocuments();
+  check("document removed after delete", docsAfter.total === 2);
+
+  // ingestDirectory skips junk dirs and tolerates per-file failures.
+  const srcDir = path.join(TEST_DB, "ingest-src");
+  fs.mkdirSync(path.join(srcDir, ".git"), { recursive: true });
+  fs.mkdirSync(path.join(srcDir, "node_modules"), { recursive: true });
+  fs.writeFileSync(path.join(srcDir, ".git", "config.ts"), "git internal stuff.");
+  fs.writeFileSync(path.join(srcDir, "node_modules", "dep.ts"), "dependency code.");
+  for (let i = 0; i < 12; i++) {
+    fs.writeFileSync(path.join(srcDir, `file${i}.ts`), `module file ${i} with distinct payload.`);
+  }
+  fs.writeFileSync(path.join(srcDir, "notes.txt"), "not an extension we ingest.");
+  const dirResult = await kb.ingestDirectory(srcDir, { recursive: true });
+  const dirTitles = dirResult.ingested.map((r) => r.title);
+  check("ingest-dir ingests source + txt files", dirResult.ingested.length === 13, `got ${dirResult.ingested.length}`);
+  check("ingest-dir reports ingestedCount", dirResult.ingestedCount === 13, JSON.stringify(dirResult.ingestedCount));
+  check("ingest-dir skips .git and node_modules", !dirTitles.includes("config.ts") && !dirTitles.includes("dep.ts"), JSON.stringify(dirTitles));
+  check("ingest-dir includes txt default ext", dirTitles.includes("notes.txt"));
+  check("ingest-dir reports no failures", dirResult.skipped.length === 0, JSON.stringify(dirResult.skipped));
+  fs.rmSync(srcDir, { recursive: true, force: true });
+
+  /* ================== 5. LONG-TERM MEMORY ================== */
+  console.log("\n=== 5. Context Management / Memory ===");
+  const m1 = await mem.remember({ content: "User prefers Python over JavaScript for backend services.", type: "preference", importance: 0.9, tags: ["user", "language"] });
+  const m2 = await mem.remember({ content: "The production API runs on Kubernetes cluster GKE-us-east1.", type: "fact", importance: 0.8, tags: ["infra"] });
+  const m3 = await mem.remember({ content: "We decided to use Postgres over MySQL for the new billing service.", type: "decision", importance: 0.95 });
+  check("remember creates memory", typeof m1.id === "string" && m1.content.includes("Python"));
+  check("memory has importance", m1.importance === 0.9);
+  check("memory has tags parsed", Array.isArray(m1.tags) && m1.tags.includes("user"));
+
+  const r1 = await mem.recall("what language does the user prefer", 5);
+  check("recall finds preference", r1.length > 0 && r1[0].content.includes("Python"), JSON.stringify(r1[0] ?? null));
+  check("recall increments count", r1.every((h) => h.recallCount >= 1));
+  check("recall exposes decay factor", r1.every((h) => typeof h.decay === "number" && h.decay > 0 && h.decay <= 1));
+
+  const mAll = mem.listMemories();
+  check("listMemories returns 3", mAll.length === 3);
+  const mClamped = mem.listMemories({ limit: 0 });
+  check("listMemories clamps limit to >= 1", mClamped.length === 1, JSON.stringify(mClamped.length));
+  const mByTag = mem.listMemories({ tag: "infra" });
+  check("listMemories filters by tag", mByTag.length === 1 && mByTag[0].content.includes("Kubernetes"));
+  const mPref = mem.listMemories({ type: "preference" });
+  check("listMemories filters by type", mPref.length === 1 && mPref[0].type === "preference");
+  const mHigh = mem.listMemories({ minImportance: 0.85 });
+  check("listMemories filters by importance", mHigh.length === 2, JSON.stringify(mHigh.map((m) => m.importance)));
+
+  const got = mem.getMemory(m2.id);
+  check("getMemory works", got !== null && got.content.includes("Kubernetes"));
+
+  const upd = await mem.updateMemory(m2.id, { importance: 0.99, tags: ["infra", "gcp"] });
+  check("updateMemory changes importance", upd?.importance === 0.99);
+  check("updateMemory changes tags", upd?.tags?.includes("gcp"));
+
+  const ctx = await mem.contextPrompt("python user preference");
+  check("contextPrompt returns block", ctx.context.length > 0 && ctx.sources.length > 0);
+  check("contextPrompt includes sources", ctx.sources[0].content.includes("Python"));
+
+  const st = mem.memoryStats();
+  check("memoryStats counts 3 memories", st.memories === 3, JSON.stringify(st));
+  check("memoryStats breaks down by type", st.byType.preference === 1 && st.byType.decision === 1 && st.byType.fact === 1);
+
+  // near-duplicate cleanup
+  await mem.remember({ content: "User prefers Python over JavaScript for backend services.", type: "preference", importance: 0.5 });
+  const beforeConsolidate = mem.memoryStats().memories;
+  check("near-dup created total 4", beforeConsolidate === 4);
+  const report = await mem.consolidate();
+  check("consolidate removes duplicate", report.removedDuplicates >= 1, JSON.stringify(report));
+  const afterConsolidate = mem.memoryStats().memories;
+  check("consolidate leaves 3", afterConsolidate === 3, JSON.stringify(afterConsolidate));
+  const survivor = mem.listMemories().find((m) => m.content.includes("Python"));
+  check("consolidate keeps higher-importance memory", survivor?.importance === 0.9, JSON.stringify(survivor));
+
+  // Dedup must not collapse memories that merely share common vocabulary. These
+  // two are short and structurally opposite, so the cosine is high while the
+  // token overlap is low — the guard is what keeps "the user's X is Y" pairs
+  // from eating each other.
+  const keptA = await mem.remember({
+    content: "The deployment runs on Kubernetes.",
+    type: "fact",
+    importance: 0.6,
+  });
+  const keptB = await mem.remember({
+    content: "The deployment runs on bare metal.",
+    type: "fact",
+    importance: 0.6,
+  });
+  const guardReport = await mem.consolidate();
+  const survivors = mem.listMemories({ limit: 500 });
+  const keptBoth =
+    survivors.some((m) => m.id === keptA.id) && survivors.some((m) => m.id === keptB.id);
+  check("consolidate keeps high-cosine but distinct memories", keptBoth, JSON.stringify(guardReport));
+  check("distinct-guard pair counts as no duplicate", guardReport.removedDuplicates === 0, JSON.stringify(guardReport));
+
+  // Idempotence: a second pass over a deduplicated store must be a no-op.
+  const secondPass = await mem.consolidate();
+  check("consolidate is idempotent", secondPass.removedDuplicates === 0, JSON.stringify(secondPass));
+  mem.forget(keptA.id);
+  mem.forget(keptB.id);
+
+  // min_score must gate the score the caller receives, not just the raw cosine.
+  // A perfect match back-dated past the decay half-life decayed to ~0 and used to
+  // be returned anyway, because the floor was applied before decay.
+  const staleId = "test-stale-decay";
+  const staleVec = packVector(embed("Decay floor regression probe about deployment."));
+  const ancient = Date.now() - 400 * 86_400_000;
+  db.prepare(
+    `INSERT INTO memories (id, type, content, importance, embedding, tags, recall_count, last_recalled, created_at, updated_at)
+     VALUES (?, 'fact', ?, 0.9, ?, '[]', 0, NULL, ?, ?)`
+  ).run(staleId, "Decay floor regression probe about deployment.", staleVec, ancient, ancient);
+  // Our own connection's writes do not bump PRAGMA data_version, so the cached
+  // vectors must be dropped by hand after inserting outside the module.
+  kb.invalidateVectorCache();
+  const decayed = await mem.recall("Decay floor regression probe about deployment.", 10, 0.5);
+  check("min_score applies after decay", !decayed.some((h) => h.id === staleId), JSON.stringify(decayed.map((h) => h.id)));
+  const decayedLoose = await mem.recall("Decay floor regression probe about deployment.", 10, 0);
+  check("stale match still found with min_score=0", decayedLoose.some((h) => h.id === staleId), JSON.stringify(decayedLoose.map((h) => h.id)));
+  db.prepare("DELETE FROM memories WHERE id = ?").run(staleId);
+
+  const del = mem.forget(m3.id);
+  check("forget deletes memory", del.deleted === true);
+  check("forget removed from list", mem.listMemories().length === 2);
+
+  // Tag filtering must be exact, not a JSON substring match.
+  await mem.remember({ content: "Alpha services use Bazel for builds.", type: "fact", tags: ["alpha"] });
+  check("tag filter exact-match (no substring)", mem.listMemories({ tag: "alp" }).length === 0, JSON.stringify(mem.listMemories({ tag: "alp" })));
+  check("tag filter exact matches", mem.listMemories({ tag: "alpha" }).length === 1);
+
+  // Optional prune — only runs when KB_PRUNE=1 (deletes are irreversible).
+  await mem.remember({ content: "Obsolete scratch note xy.", type: "fact", importance: 0.1 });
+  check("prune candidate exists", mem.listMemories().length === 4);
+  // Back-date the candidate: AGE_DAYS=0 combined with a fresh created_at depends
+  // on the clock advancing between the write and the prune, which is not
+  // guaranteed on a fast runner.
+  db.prepare("UPDATE memories SET created_at = ? WHERE content = ?").run(Date.now() - 60_000, "Obsolete scratch note xy.");
+  process.env.KB_PRUNE = "1";
+  process.env.KB_PRUNE_IMPORTANCE = "0.5";
+  process.env.KB_PRUNE_AGE_DAYS = "0";
+  const pruneReport = await mem.consolidate();
+  check("prune removes stale low-importance memory", pruneReport.pruned === 1, JSON.stringify(pruneReport));
+  check("prune leaves other memories", mem.listMemories().length === 3);
+  const afterPrune = mem.listMemories();
+  check("prune keeps alpha memory", afterPrune.some((m) => m.content.includes("Bazel")));
+  check("prune keeps a never-recalled memory above the threshold", afterPrune.some((m) => m.content.includes("Bazel") && m.recallCount === 0), JSON.stringify(afterPrune.map((m) => [m.content.slice(0, 20), m.recallCount])));
+  // A recalled low-importance memory must survive: recall_count = 0 is a guard.
+  await mem.remember({ content: "Low value but frequently needed fact qqq.", type: "fact", importance: 0.1 });
+  db.prepare("UPDATE memories SET recall_count = 5, created_at = ? WHERE content = ?").run(Date.now() - 60_000, "Low value but frequently needed fact qqq.");
+  const pruneAgain = await mem.consolidate();
+  check("prune never deletes a recalled memory", pruneAgain.pruned === 0, JSON.stringify(pruneAgain));
+  delete process.env.KB_PRUNE;
+  delete process.env.KB_PRUNE_IMPORTANCE;
+  delete process.env.KB_PRUNE_AGE_DAYS;
+
+  // A corrupted tags column must not break the read paths (json_each raises on
+  // malformed JSON, and the tag filter is the one query that touches it).
+  db.prepare("INSERT INTO memories (id, type, content, importance, tags, recall_count, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)").run(
+    "corrupt-tags",
+    "fact",
+    "Memory with a corrupted tags column.",
+    0.4,
+    "{not-json",
+    0,
+    Date.now(),
+    Date.now()
+  );
+  const corruptListed = mem.listMemories();
+  check("malformed tags does not break listing", corruptListed.some((m) => m.id === "corrupt-tags" && m.tags.length === 0), JSON.stringify(corruptListed.find((m) => m.id === "corrupt-tags")?.tags));
+  check("tag filter survives a malformed row", mem.listMemories({ tag: "alpha" }).length === 1, JSON.stringify(mem.listMemories({ tag: "alpha" })));
+  db.prepare("DELETE FROM memories WHERE id = ?").run("corrupt-tags");
+
+  /* ================== 6. MCP SERVER ROUND-TRIP ================== */
+  console.log("\n=== 6. MCP Server Round-Trip (via SDK Client) ===");
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
+
+  const transport = new StdioClientTransport({
+    command: "npx",
+    args: ["tsx", path.join("src", "mcp", "cortex-server.ts")],
+    cwd: ROOT,
+    env: { ...process.env, CORTEX_DB_DIR: TEST_DB },
+    stderr: "pipe",
+  });
+  const client = new Client({ name: "test-client", version: "1.0.0" });
+
+  try {
+    await client.connect(transport);
+    check("MCP client connected", true);
+
+    const tools = await client.listTools();
+    const toolNames = tools.tools.map((t) => t.name);
+    const expected = [
+      "system_stats", "knowledge_ingest_text", "knowledge_ingest_file", "knowledge_ingest_dir",
+      "knowledge_search", "knowledge_retrieve", "knowledge_list_documents", "knowledge_document_stats",
+      "knowledge_delete_document", "memory_remember", "memory_recall", "memory_list",
+      "memory_get", "memory_update", "memory_forget", "memory_consolidate",
+      "memory_stats", "memory_context", "knowledge_sync_session", "knowledge_reindex",
+      "knowledge_backup",
+      "bootstrap_session", "provision_agent_skill", "list_agents_skills", "update_procedure_block",
+      "detect_model", "get_model_profile", "set_model", "get_guardrails", "model_decision",
+      "get_procedure", "list_procedures", "ingest_procedure", "retrieve_exemplars", "ingest_exemplar",
+      "self_critique", "score_compliance", "run_verification",
+      "decision_classify", "decision_health", "cognitive_status",
+      "init_plan", "read_plan", "update_plan_section", "init_task", "task_create", "task_list",
+      "task_get", "task_start", "task_done", "task_block", "task_delete", "task_sync_md", "task_summary",
+    ];
+    check("all tools registered", expected.every((t) => toolNames.includes(t)), `missing: ${expected.filter((t) => !toolNames.includes(t))}`);
+    check("exactly 54 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
+
+    const sys = await client.callTool({ name: "system_stats", arguments: {} });
+    const sysText = toolText(sys);
+    const sysJson = JSON.parse(sysText.startsWith("---") ? sysText.replace(/^---.*$/m, "").trim() : sysText);
+    check("system_stats has dbDir", sysJson.dbDir === TEST_DB, sysText.slice(0, 100));
+    check("system_stats exposes embedding backend", typeof sysJson.embedding?.provider === "string", JSON.stringify(sysJson.embedding));
+    check("system_stats labels the vector leg honestly", sysJson.embedding?.vectorLeg === "lexical" || sysJson.embedding?.vectorLeg === "semantic", JSON.stringify(sysJson.embedding));
+    check("system_stats explains the vector leg", typeof sysJson.embedding?.note === "string" && sysJson.embedding.note.length > 20, JSON.stringify(sysJson.embedding?.note));
+    check("system_stats reports a coherent store state", sysJson.storeState === "ready", JSON.stringify(sysJson.storeState));
+    check("system_stats reports store integrity", sysJson.db?.health?.status === "ok", JSON.stringify(sysJson.db));
+
+    // Backup over MCP: consistent snapshot, no overwrite of an existing file.
+    const bkPath = path.join(TEST_DB, "backups", "mcp-roundtrip.sqlite");
+    const bk = await client.callTool({ name: "knowledge_backup", arguments: { target_path: bkPath } });
+    const bkJson = JSON.parse(toolText(bk));
+    check("knowledge_backup writes a consistent snapshot", bkJson.integrity?.ok === true && fs.existsSync(bkJson.path) && bkJson.documents >= 2, JSON.stringify(bkJson));
+    const bkDup = await client.callTool({ name: "knowledge_backup", arguments: { target_path: bkPath } });
+    check("knowledge_backup refuses to overwrite an existing file", !toolText(bkDup).includes("integrity"), toolText(bkDup).slice(0, 160));
+    fs.rmSync(bkPath, { force: true });
+    fs.rmSync(path.dirname(bkPath), { recursive: true, force: true });
+
+    // Note: shared DB — docs from earlier in-process ingestion are visible.
+    const listDocs = await client.callTool({ name: "knowledge_list_documents", arguments: {} });
+    const listJson = JSON.parse(toolText(listDocs));
+    check("knowledge_list_documents returns existing docs", Array.isArray(listJson.documents) && listJson.documents.length >= 2, JSON.stringify(listJson).slice(0, 120));
+    const pagedDocs = await client.callTool({ name: "knowledge_list_documents", arguments: { limit: 1 } });
+    const pagedJson = JSON.parse(toolText(pagedDocs));
+    check("knowledge_list_documents honours limit", pagedJson.documents.length === 1 && pagedJson.total >= 2, JSON.stringify(pagedJson).slice(0, 120));
+    const badLimit = await client.callTool({ name: "knowledge_list_documents", arguments: { limit: 100_000 } });
+    check("knowledge_list_documents rejects out-of-range limit", toolText(badLimit).length > 0);
+
+    // Unbounded strings used to reach the chunker and embedder as-is; the caps
+    // must reject them at the schema boundary instead of stalling the server.
+    const hugeQuery = await client.callTool({ name: "knowledge_search", arguments: { query: "a".repeat(5_000) } });
+    check("knowledge_search rejects an oversized query", /at most|too_big|too large|invalid|exceeds/i.test(toolText(hugeQuery)), toolText(hugeQuery).slice(0, 160));
+    const hugeContent = await client.callTool({
+      name: "knowledge_ingest_text",
+      arguments: { title: "Huge", content: "b".repeat(1_200_000) },
+    });
+    check("knowledge_ingest_text rejects oversized content", toolText(hugeContent).length > 0 && toolText(hugeContent).slice(0, 200).toLowerCase() !== "", "expected a schema rejection");
+    const manyTags = await client.callTool({
+      name: "memory_remember",
+      arguments: { content: "Tag flood probe", tags: Array.from({ length: 200 }, (_, i) => `t${i}`) },
+    });
+    check("memory_remember rejects too many tags", /at most|too_big|too large/i.test(toolText(manyTags)), toolText(manyTags).slice(0, 160));
+    const overlongTag = await client.callTool({
+      name: "memory_remember",
+      arguments: { content: "Tag length probe", tags: ["z".repeat(500)] },
+    });
+    check("memory_remember rejects an overlong tag", toolText(overlongTag).length > 0, toolText(overlongTag).slice(0, 120));
+
+    // explain must be opt-in over MCP too, and carry the same per-leg data.
+    const explainMcp = await client.callTool({ name: "knowledge_search", arguments: { query: "github actions pipeline", top_k: 3, explain: true } });
+    const explainJson = JSON.parse(toolText(explainMcp));
+    check("knowledge_search honours explain over MCP", explainJson.length >= 1 && explainJson[0].explain !== undefined, JSON.stringify(explainJson[0]).slice(0, 160));
+    const noExplainMcp = await client.callTool({ name: "knowledge_search", arguments: { query: "github actions pipeline", top_k: 3 } });
+    check("knowledge_search omits explain by default", JSON.parse(toolText(noExplainMcp))[0].explain === undefined);
+
+    // alpha blend must be schema-bounded over MCP.
+    const badAlphaMcp = await client.callTool({ name: "knowledge_search", arguments: { query: "thing", alpha: 1.5 } });
+    check("knowledge_search rejects alpha outside 0..1", /at most|max|between|invalid/i.test(toolText(badAlphaMcp)), toolText(badAlphaMcp).slice(0, 160));
+
+    const ingest = await client.callTool({
+      name: "knowledge_ingest_text",
+      arguments: { title: "MCP test doc", content: "The ci pipeline runs on GitHub Actions with three stages: lint, test, deploy.", contentType: "text" },
+    });
+    const ingestJson = JSON.parse(toolText(ingest));
+    check("knowledge_ingest_text works over MCP", ingestJson.chunks >= 1);
+
+    const search = await client.callTool({ name: "knowledge_search", arguments: { query: "github actions pipeline", top_k: 3 } });
+    const searchHits = JSON.parse(toolText(search));
+    check("knowledge_search works over MCP", searchHits.length >= 1 && searchHits[0].content.includes("GitHub Actions"), JSON.stringify(searchHits[0]));
+
+    const retrieveTool = await client.callTool({ name: "knowledge_retrieve", arguments: { query: "ci pipeline" } });
+    check("knowledge_retrieve returns context block", toolText(retrieveTool).includes("Context block"));
+
+    const rem = await client.callTool({
+      name: "memory_remember",
+      arguments: { content: "The user deploys to staging every Friday afternoon.", type: "task", importance: 0.7, tags: ["deploy", "schedule"] },
+    });
+    const remJson = JSON.parse(toolText(rem));
+    check("memory_remember works over MCP", remJson.content.includes("Friday"), JSON.stringify(remJson));
+
+    const rec = await client.callTool({ name: "memory_recall", arguments: { query: "deployment schedule", top_k: 3 } });
+    const recHits = JSON.parse(toolText(rec));
+    check("memory_recall works over MCP", recHits.length >= 1 && recHits[0].content.includes("Friday"));
+
+    const memCtx = await client.callTool({ name: "memory_context", arguments: { topic: "deployment" } });
+    check("memory_context works over MCP", toolText(memCtx).includes("Memory context"));
+
+    const mStats = await client.callTool({ name: "memory_stats", arguments: {} });
+    check("memory_stats works over MCP", JSON.parse(toolText(mStats)).memories > 0);
+
+    await client.close();
+    check("MCP client closed cleanly", true);
+  } catch (e) {
+    check("MCP round-trip succeeded", false, (e as Error).message);
+    try { await client.close(); } catch { /* ignore */ }
+  }
+
+  /* ================== 7. SESSION SYNC ================== */
+  console.log("\n=== 7. Session Sync (jsonl logs + transcript) ===");
+  const sess = await import("../session/transcript.js");
+
+  const logDir = path.join(TEST_DB, "session-logs");
+  fs.mkdirSync(logDir, { recursive: true });
+  const logFile = path.join(logDir, "ses-demo.jsonl");
+  fs.writeFileSync(
+    logFile,
+    [
+      JSON.stringify({ ts: 1000, session: "ses-demo", content: "Session log line one about the flying birds of Java island." }),
+      JSON.stringify({ ts: 2000, session: "ses-demo", content: "Session log line two, a follow-up question about databases." }),
+      JSON.stringify({ ts: 3000, session: "ses-demo", content: "   " }),
+      "not-json-at-all",
+      "",
+    ].join("\n"),
+    "utf8"
+  );
+
+  const parsed = sess.readJsonl(logFile);
+  check("readJsonl parses valid lines only", parsed.length === 2, `got ${parsed.length}`);
+
+  /* --- key-point condensing --- */
+  const short = "Singkat saja";
+  const shortOut = sess.condenseInput(short);
+  check("short input passes through untouched", shortOut === short, shortOut);
+
+  const longUncondensed =
+    "Hari ini saya memutuskan arsitektur utama untuk layanan autentikasi dengan JWT token, RSA signing, dan expiry. " +
+    "Kami juga memilih Prisma sebagai ORM dengan schema tunggal, dan Chart.js untuk dashboard. " +
+    "Deployment dilakukan ke staging setiap Jumat sore menggunakan GitHub Actions dengan tiga stage lint, test, dan deploy. " +
+    "Semua rahasia disimpan di vault dan tidak boleh masuk repository. " +
+    "Tim kecil ini menyepakati bahwa review kode wajib sebelum merge. " +
+    "Anggaran bulanan infrastruktur dijaga di bawah sepuluh juta rupiah.";
+  const longOut = sess.condenseInput(longUncondensed);
+  check("long input condensed", longOut.length < longUncondensed.length, `${longUncondensed.length} -> ${longOut.length}`);
+  check("condense is deterministic", longOut === sess.condenseInput(longUncondensed));
+  check("condense keeps key facts", longOut.includes("autentikasi") || longOut.includes("Prisma") || longOut.includes("staging"));
+
+  const lr1 = await sess.ingestJsonlFile(logFile);
+  check("ingest-jsonl creates one doc per message", lr1.newDocs === 2, JSON.stringify(lr1));
+  check("blank/malformed lines skipped", lr1.messages === 2 && lr1.skipped === 0, JSON.stringify(lr1));
+
+  const lr2 = await sess.ingestJsonlFile(logFile);
+  check("re-run deduplicates by content-hash", lr2.deduplicated === 2 && lr2.newDocs === 0, JSON.stringify(lr2));
+
+  const ls = await kb.searchDocs("flying birds java", 5);
+  check("session log entries searchable", ls.some((h) => h.content.includes("flying")), JSON.stringify(ls[0]));
+
+  const ld = await sess.ingestLogDir(logDir);
+  check("ingest-logs-dir counts files and stays idempotent", ld.files === 1 && ld.newDocs === 0 && ld.deduplicated === 2, JSON.stringify(ld));
+
+  const withMeta = kb.listDocuments().documents.find((d) => (d as { title: string }).title.includes("ses-demo")) as { source?: string; metadata?: unknown };
+  check("listDocuments exposes source metadata", withMeta?.source === "session-log" && typeof withMeta?.metadata === "string", JSON.stringify(withMeta));
+
+  /* ================== 8. Env loader + entry shim ================== */
+  const { loadDotenv } = await import("../env.js");
+  const envFile = path.join(TEST_DB, "env-fixture");
+  fs.writeFileSync(
+    envFile,
+    [
+      "# comment line",
+      "KB_ENVTEST_ALPHA=hello",
+      'KB_ENVTEST_QUOTED="two words"',
+      'KB_ENVTEST_QCOMMENT="two words" # trailing note',
+      "KB_ENVTEST_SINGLE='raw value'",
+      "export KB_ENVTEST_EXPORT=ok",
+      "KB_ENVTEST_INLINE=val # keep the note out",
+      "KB_ENVTEST_EMPTY=",
+      "AWS_SECRET_ACCESS_KEY=must-not-leak",
+      "KB_ENVTEST_HASH=a#b",
+      "1BAD_KEY=nope",
+    ].join("\n"),
+    "utf8"
+  );
+  process.env.KB_ENVTEST_PRESET = "existing";
+  loadDotenv(envFile);
+  check("env: existing var never overridden", process.env.KB_ENVTEST_PRESET === "existing");
+  check("env: plain KEY=VALUE", process.env.KB_ENVTEST_ALPHA === "hello", process.env.KB_ENVTEST_ALPHA);
+  check("env: quoted value stripped", process.env.KB_ENVTEST_QUOTED === "two words", process.env.KB_ENVTEST_QUOTED);
+  check("env: comment after closing quote stripped", process.env.KB_ENVTEST_QCOMMENT === "two words", process.env.KB_ENVTEST_QCOMMENT);
+  check("env: single quotes stripped", process.env.KB_ENVTEST_SINGLE === "raw value", process.env.KB_ENVTEST_SINGLE);
+  check("env: export prefix stripped", process.env.KB_ENVTEST_EXPORT === "ok", process.env.KB_ENVTEST_EXPORT);
+  check("env: inline comment stripped", process.env.KB_ENVTEST_INLINE === "val", process.env.KB_ENVTEST_INLINE);
+  check("env: empty value stored as ''", process.env.KB_ENVTEST_EMPTY === "", JSON.stringify(process.env.KB_ENVTEST_EMPTY));
+  check("env: hash without preceding space kept", process.env.KB_ENVTEST_HASH === "a#b", process.env.KB_ENVTEST_HASH);
+  check("env: foreign keys are not injected", process.env.AWS_SECRET_ACCESS_KEY === undefined, String(process.env.AWS_SECRET_ACCESS_KEY));
+  for (const k of ["KB_ENVTEST_ALPHA", "KB_ENVTEST_QUOTED", "KB_ENVTEST_QCOMMENT", "KB_ENVTEST_SINGLE", "KB_ENVTEST_EXPORT", "KB_ENVTEST_INLINE", "KB_ENVTEST_EMPTY", "KB_ENVTEST_HASH", "KB_ENVTEST_PRESET"]) delete process.env[k];
+
+  // End-to-end: the published entry shim must load CORTEX_ENV_FILE before booting the
+  // server, so the store lands where the .env points. Spawned as a real process
+  // (node + tsx loader) to exercise the exact startup path. Keeps stdin open so
+  // the sequential handshake (init → initialized → tools/call) completes.
+  const { spawn } = await import("node:child_process");
+  const envDir = path.join(TEST_DB, "entry-store");
+  fs.rmSync(envDir, { recursive: true, force: true });
+  const entryEnv = path.join(TEST_DB, "entry-env");
+  fs.writeFileSync(entryEnv, `CORTEX_DB_DIR=${JSON.stringify(envDir)}`, "utf8");
+
+  const runEntry = (lines: string[]) =>
+    new Promise<string>((resolve, reject) => {
+      const childEnv: Record<string, string | undefined> = { ...process.env, CORTEX_ENV_FILE: entryEnv };
+      delete childEnv.CORTEX_DB_DIR;
+      const child = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
+        cwd: ROOT,
+        env: childEnv,
+        stdio: ["pipe", "pipe", "ignore"],
+      });
+      let out = "";
+      let sent = 0;
+      const killer = setTimeout(() => {
+        child.kill();
+        reject(new Error(`entry shim timeout; received: ${out.trim()}`));
+      }, 30_000);
+      child.stdout!.on("data", (chunk) => {
+        out += chunk;
+        // Progress the handshake once the previous response has landed.
+        if (sent === 1 && out.includes('"id":1')) {
+          sent = 2;
+          child.stdin!.write(lines[1] + "\n");
+          child.stdin!.write(lines[2] + "\n");
+        }
+        if (sent === 2 && out.includes('"id":2')) {
+          clearTimeout(killer);
+          child.kill();
+          resolve(out);
+        }
+      });
+      child.stdin!.write(lines[0] + "\n");
+      sent = 1;
+    });
+
+  const entryOut = await runEntry([
+    '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"suite","version":"0"}}}',
+    '{"jsonrpc":"2.0","method":"notifications/initialized"}',
+    '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"system_stats","arguments":{}}}',
+  ]).catch((e) => {
+    check("entry: server answered initialize + tools/call", false, String(e));
+    return "";
+  });
+  const outLines = entryOut.split("\n").filter(Boolean);
+  const last = outLines[outLines.length - 1] ?? "";
+  check("entry: server answered initialize + tools/call", outLines.length >= 2 && /"id":2/.test(entryOut), outLines.join(" | "));
+  const parsedStat = (() => {
+    try {
+      const o = JSON.parse(last) as { result?: { content?: Array<{ text?: string }> } };
+      return JSON.parse(o.result?.content?.[0]?.text ?? "{}") as { dbDir?: string };
+    } catch {
+      return {};
+    }
+  })();
+  check("entry: CORTEX_ENV_FILE honored (dbDir from .env)", parsedStat.dbDir === path.resolve(envDir), String(parsedStat.dbDir));
+  check("entry: exists on disk", fs.existsSync(path.join(ROOT, "src", "index.ts")));
+
+  /* ================== 9. HARDENING REGRESSIONS ================== */
+  console.log("\n=== 9. Hardening Regressions ===");
+
+  // FTS index must be populated, not just created: a fresh table with no backfill
+  // makes every pre-existing chunk invisible to keyword search forever.
+  const chunkCount = (db.prepare("SELECT COUNT(*) AS c FROM chunks").get() as { c: number }).c;
+  const ftsCount = (db.prepare("SELECT COUNT(*) AS c FROM chunks_fts").get() as { c: number }).c;
+  check("chunks_fts backfilled from chunks", ftsCount === chunkCount, `chunks=${chunkCount} fts=${ftsCount}`);
+
+  // FTS5 syntax characters in a user query used to be passed to MATCH raw and
+  // throw "fts5: syntax error near ...".
+  let ftsBoom = "";
+  try {
+    await kb.searchDocs('zzzqx AND (unbalanced "quote NEAR/2', 5);
+  } catch (e) {
+    ftsBoom = (e as Error).message;
+  }
+  check("FTS special characters do not throw", ftsBoom === "", ftsBoom);
+  const partialTerm = await kb.searchDocs("uthenticatio", 5, 0);
+  check("trigram substring search works", partialTerm.length > 0, JSON.stringify(partialTerm.length));
+
+  // min_score must be a real filter on the final fused score: every returned hit
+  // clears the threshold, and raising it never widens the result set.
+  const loose = await kb.searchDocs("jwt authentication RSA", 10, 0.05);
+  const strict = await kb.searchDocs("jwt authentication RSA", 10, 0.9);
+  check("min_score filters on the final score", strict.every((h) => h.score >= 0.9) && strict.length <= loose.length, JSON.stringify({ loose: loose.length, strict: strict.length }));
+  check("min_score 0 keeps hits", loose.length > 0);
+  check("scores stay in 0..1", loose.every((h) => h.score >= 0 && h.score <= 1), JSON.stringify(loose.map((h) => h.score)));
+
+  // Cross-connection cache invalidation: a second process/connection writing to
+  // the store must be visible without reopening this one (the CLI, the plugin
+  // and a second MCP server all write through their own handles).
+  const { DatabaseSync } = await import("node:sqlite");
+  const other = new DatabaseSync(DB_PATH);
+  const now = Date.now();
+  const foreignText = "quixoticflimflam external writer inserted this paragraph directly";
+  other.exec("BEGIN IMMEDIATE;");
+  other
+    .prepare("INSERT INTO documents (id, title, source, content_type, metadata, chunk_count, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)")
+    .run("foreign-doc", "Foreign write", "external", "text", "{}", 1, now, now);
+  other
+    .prepare("INSERT INTO chunks (id, doc_id, idx, content, embedding, token_count, created_at) VALUES (?,?,?,?,?,?,?)")
+    .run("foreign-chunk", "foreign-doc", 0, foreignText, Buffer.from(packVector(embed(foreignText))), 12, now);
+  other.exec("COMMIT;");
+  other.close();
+  const foreignHit = await kb.searchDocs("quixoticflimflam", 5, 0);
+  check("search sees another connection's write", foreignHit.some((h) => h.docId === "foreign-doc"), JSON.stringify(foreignHit[0] ?? null));
+  kb.deleteDocument("foreign-doc");
+  check("foreign doc deleted", !kb.listDocuments({ limit: 1000 }).documents.some((d) => d.id === "foreign-doc"));
+
+  // dedupScope: identical text in two scopes must NOT collapse into one document.
+  const scopedText = "identical payload for the dedup scope check";
+  const sA = await kb.ingestText(scopedText, "Scope A", { dedupScope: "sess-a:1" });
+  const sB = await kb.ingestText(scopedText, "Scope B", { dedupScope: "sess-b:1" });
+  check("different dedup scopes keep both docs", sA.docId !== sB.docId && sB.deduplicated === false, JSON.stringify({ a: sA.docId, b: sB.docId }));
+  const sB2 = await kb.ingestText(scopedText, "Scope B again", { dedupScope: "sess-b:1" });
+  check("same dedup scope dedupes", sB2.deduplicated === true && sB2.docId === sB.docId, JSON.stringify(sB2));
+  kb.deleteDocument(sA.docId);
+  kb.deleteDocument(sB.docId);
+
+  // consolidate must not eat distinct-but-similar templated memories. These two
+  // are ~0.95 cosine on the hashing embedder but say different things.
+  const beforeTpl = mem.memoryStats().memories;
+  await mem.remember({ content: "The user's favourite editor is Neovim.", type: "preference", importance: 0.6 });
+  await mem.remember({ content: "The user's favourite terminal is WezTerm.", type: "preference", importance: 0.6 });
+  const tplReport = await mem.consolidate();
+  check("consolidate keeps distinct templated memories", tplReport.removedDuplicates === 0, JSON.stringify(tplReport));
+  check("templated memories both survive", mem.memoryStats().memories === beforeTpl + 2, JSON.stringify(mem.memoryStats().memories));
+  check("consolidate reports totals", tplReport.totals.memories === mem.memoryStats().memories, JSON.stringify(tplReport.totals));
+
+  // Chunker guards. An absurd overlap is clamped (not rejected) — the guarantee
+  // that matters is that no chunk ever exceeds maxChars and nothing loops.
+  const clampedOverlap = chunkText(longText, { maxChars: 200, overlapChars: 5000 });
+  check("absurd overlap is clamped, chunks stay bounded", clampedOverlap.length > 1 && clampedOverlap.every((c) => c.text.length <= 200), JSON.stringify(clampedOverlap.length));
+  check("chunkText rejects non-finite max", await rejects(() => chunkText("some text here", { maxChars: Number.NaN })));
+  check("chunkText rejects negative overlap", await rejects(() => chunkText("some text here", { maxChars: 200, overlapChars: -1 })));
+  const noOverlapText = Array.from({ length: 40 }, (_, i) => `Clause ${i} holds unique marker ${i * 7 + 3} plus filler words for boundary checks.`).join(" ");
+  const noOverlap = chunkText(noOverlapText, { maxChars: 300, overlapChars: 0 });
+  // Whitespace-normalized: the chunker re-joins sentences with " " or "\n",
+  // so a raw char-by-char comparison breaks on the joiner, not on real overlap.
+  // The fixture must be non-repetitive — identical clauses would match by
+  // coincidence and prove nothing.
+  const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+  const carriesContext = (prev: string, next: string) => {
+    const tail = norm(prev).slice(-40);
+    return tail.length === 40 && norm(next).includes(tail);
+  };
+  check("overlap 0 shares no text between chunks", noOverlap.length > 1 && noOverlap.every((c, i) => i === 0 || !carriesContext(noOverlap[i - 1].text, c.text)), JSON.stringify(noOverlap.length));
+  check("overlap 0 keeps every chunk bounded", noOverlap.every((c) => c.text.length <= 300), JSON.stringify(noOverlap.map((c) => c.text.length)));
+  const withOverlap = chunkText(noOverlapText, { maxChars: 300, overlapChars: 80 });
+  check("overlap 80 carries context forward", withOverlap.length > 1 && withOverlap.some((c, i) => i > 0 && carriesContext(withOverlap[i - 1].text, c.text)), JSON.stringify(withOverlap.length));
+const codeChunked = chunkText("```ts\nconst a = 1;\n```\n\nplain paragraph after the fence.", { maxChars: 200 });
+    check("fenced code is kept intact", codeChunked.length >= 1 && codeChunked[0].text.includes("```"), JSON.stringify(codeChunked[0]?.text.slice(0, 60)));
+
+    // No chunk may exceed maxChars. The window is normally kept under budget,
+    // but carry() can prepend up to maxChars/2 to a full-size piece, and an
+    // over-budget chunk wastes embedder context for no retrieval gain.
+    const oversizeProbe = chunkText(
+      Array.from({ length: 12 }, (_, i) => `sentence number ${i} `.repeat(8)).join(" "),
+      { maxChars: 300, overlapChars: 150 }
+    );
+    check(
+      "every chunk stays within maxChars",
+      oversizeProbe.every((c) => c.text.length <= 300),
+      JSON.stringify(oversizeProbe.map((c) => c.text.length))
+    );
+    check(
+      "no text is lost when clamping",
+      (() => {
+        const probeNoSpace = oversizeProbe.map((c) => c.text.replace(/\s+/g, "")).join("");
+        const source = Array.from({ length: 12 }, (_, i) => `sentence number ${i} `.repeat(8)).join(" ");
+        return probeNoSpace.length >= source.replace(/\s+/g, "").length - 2;
+      })(),
+      JSON.stringify(oversizeProbe.length)
+    );
+    check(
+      "clamped chunk indices stay contiguous",
+      oversizeProbe.every((c, i) => c.index === i),
+      JSON.stringify(oversizeProbe.map((c) => c.index))
+    );
+
+  // Session DB discovery must be read at call time, not frozen at import.
+  const sessDbPath = path.join(TEST_DB, "fake-opencode.db");
+  check("opencodeDbs() empty before the env var is set", !sess.opencodeDbs().some((p) => p === path.resolve(sessDbPath)));
+  const { listOpenCodeSessions } = await import("../session/transcript.js");
+  check("listOpenCodeSessions returns a list", Array.isArray(listOpenCodeSessions(5)));
+  process.env.OPENCODE_DB = sessDbPath;
+  new DatabaseSync(sessDbPath).close();
+  check("opencodeDbs() picks up a late OPENCODE_DB", sess.opencodeDbs().some((p) => p === path.resolve(sessDbPath)), JSON.stringify(sess.opencodeDbs()));
+  delete process.env.OPENCODE_DB;
+  check("opencodeDbs() drops it again", !sess.opencodeDbs().some((p) => p === path.resolve(sessDbPath)));
+  await rejects(async () => sess.getSessionTranscript("no-such-session"), /not found|No opencode/i);
+
+  // One unusable candidate DB must not hide a healthy one. Before this fix the
+  // probe loop had no per-DB guard, so a stale opencode.db anywhere in the search
+  // order aborted the whole sync and reported it as "session not found".
+  const corruptDbPath = path.join(TEST_DB, "corrupt-opencode.db");
+  const goodDbPath = path.join(TEST_DB, "good-opencode.db");
+  fs.writeFileSync(corruptDbPath, Buffer.from("this is definitely not a sqlite file"));
+  {
+    const good = new DatabaseSync(goodDbPath);
+    // Must match the schema transcriptFromDb asserts (message.time_created, a part
+    // table). A fixture missing these throws a schema error of its own, so the
+    // "healthy" DB looks as broken as the corrupt one and the test would pass
+    // without ever proving isolation.
+    good.exec("CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT, time_updated INTEGER)");
+    good.exec("CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT, time_created INTEGER, data TEXT)");
+    good.exec("CREATE TABLE part (id TEXT PRIMARY KEY, message_id TEXT, data TEXT)");
+    good.prepare("INSERT INTO session (id, directory, time_updated) VALUES (?, ?, ?)").run("survivor-session", "/tmp", 1);
+    good
+      .prepare("INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)")
+      .run("m1", "survivor-session", 1, JSON.stringify({ role: "user" }));
+    good
+      .prepare("INSERT INTO part (id, message_id, data) VALUES (?, ?, ?)")
+      .run("p1", "m1", JSON.stringify({ type: "text", text: "the healthy db holds this transcript" }));
+    good.close();
+  }
+  process.env.OPENCODE_DB = corruptDbPath;
+  process.env.OPENCODE_DB_LOCAL = goodDbPath;
+  // The strong assertion: the healthy candidate's transcript must actually come
+  // back. Asserting "it threw no schema error" was not enough — a throwing
+  // healthy DB also satisfied the old check, which is exactly how this slipped
+  // past on Windows and failed on Linux.
+  let salvagedContent = "";
+  let salvagedErr = "";
+  try {
+    const entries = await sess.getSessionTranscript("survivor-session");
+    salvagedContent = entries.map((e) => e.content).join("\n");
+  } catch (e) {
+    salvagedErr = e instanceof Error ? e.message : String(e);
+  }
+  check(
+    "a corrupt candidate DB does not abort the whole probe",
+    salvagedContent.includes("the healthy db holds this transcript"),
+    salvagedErr || JSON.stringify(salvagedContent)
+  );
+  process.env.OPENCODE_DB = corruptDbPath;
+  delete process.env.OPENCODE_DB_LOCAL;
+  let isoErr = "";
+  try {
+    await sess.getSessionTranscript("survivor-session");
+  } catch (e) {
+    isoErr = e instanceof Error ? e.message : String(e);
+  }
+  // Whichever way it resolves, the operator must get an actionable message: never
+  // a raw "file is not a database" from whichever candidate happened to sort first.
+  check(
+    "a corrupt candidate never leaks a raw sqlite error",
+    /failed to read|not found/i.test(isoErr) && !/SQLITE_NOTADB|not a database/i.test(isoErr),
+    isoErr.slice(0, 220)
+  );
+  delete process.env.OPENCODE_DB;
+  fs.rmSync(corruptDbPath, { force: true });
+  fs.rmSync(goodDbPath, { force: true });
+
+  // clean-all: the old list-then-delete loop only cleared the first 100 rows.
+  const bulk = [];
+  for (let i = 0; i < 105; i++) {
+    bulk.push(await kb.ingestText(`bulk payload number ${i} for the destructive wipe check`, `Bulk ${i}`));
+  }
+  const beforeWipe = kb.documentStats().documents;
+  check("bulk docs ingested", beforeWipe >= 105, JSON.stringify(beforeWipe));
+  const { spawnSync } = await import("node:child_process");
+  // Run the script directly through tsx (no npx) — the MCP round-trip above
+  // already covers the npx path, and npx.cmd cannot be spawned without a shell.
+  const runCleanAll = (args: string[]) =>
+    spawnSync(process.execPath, ["--import", "tsx", path.join("scripts", "clean-all.ts"), ...args], {
+      cwd: ROOT,
+      env: { ...process.env, CORTEX_DB_DIR: TEST_DB },
+      encoding: "utf8",
+      timeout: 120_000,
+    });
+  const clean = runCleanAll(["--force"]);
+  check("clean-all exits cleanly", clean.status === 0, `${clean.status}: ${clean.stderr?.slice(-400)}`);
+  const remainingDocs = (db.prepare("SELECT COUNT(*) AS c FROM documents").get() as { c: number }).c;
+  check("clean-all wiped every document", remainingDocs === 0, JSON.stringify({ remainingDocs, before: beforeWipe }));
+  check("clean-all wiped chunks", (db.prepare("SELECT COUNT(*) AS c FROM chunks").get() as { c: number }).c === 0);
+  check("clean-all wiped memories", (db.prepare("SELECT COUNT(*) AS c FROM memories").get() as { c: number }).c === 0);
+  const noForce = runCleanAll([]);
+  check("clean-all refuses without --force", noForce.status === 1, String(noForce.status));
+
+  /* ================== 10. EXPLAINABILITY, REINDEX, SCALE GUARDS ================== */
+  console.log("\n=== 10. Explainability, Reindex, Scale Guards ===");
+  const { reindex } = await import("../knowledge/reindex.js");
+  const { setEmbedState, getEmbedState, getEmbedDim } = await import("../db/database.js");
+
+  // --- 10a. per-leg explain on the hybrid search -------------------------------
+  await kb.ingestText("Passport renewal requires a notarised photo and proof of address", "Passport renewal guide");
+  await kb.ingestText("The deployment pipeline runs lint, typecheck and the full test suite before release", "Release pipeline notes");
+  await kb.ingestText("Postgres connection pooling is configured with pgbouncer in transaction mode", "Database pooling notes");
+
+  const plainHits = await kb.searchDocs("notarised photo passport", 5);
+  check("hybrid search still returns hits", plainHits.length > 0, String(plainHits.length));
+  check("hits report which legs produced them", plainHits.every((h) => Array.isArray(h.legs) && h.legs.length > 0), JSON.stringify(plainHits.map((h) => h.legs)));
+  check("no explain payload unless requested", plainHits.every((h) => h.explain === undefined), JSON.stringify(plainHits[0]));
+
+  const explained = await kb.searchDocs("notarised photo passport", 5, 0.08, undefined, true);
+  check("explain attaches per-leg diagnostics", explained.length > 0 && explained.every((h) => h.explain !== undefined), JSON.stringify(explained[0]));
+  const withVector = explained.find((h) => h.explain?.vectorScore !== undefined);
+  check("explain reports a cosine for vector hits", withVector !== undefined && withVector.explain!.vectorScore! >= -1 && withVector.explain!.vectorScore! <= 1, JSON.stringify(withVector?.explain));
+  // The reported vector score must be the raw cosine, not the fused max(cosine,
+  // keyword) — otherwise a keyword-carried hit looks like a strong vector match,
+  // which is the exact misreading this flag exists to prevent.
+  check(
+    "explain does not report the fused score as the vector score",
+    explained.every((h) => h.explain?.vectorScore === undefined || h.explain.vectorScore <= h.score + 1e-9),
+    JSON.stringify(explained.map((h) => ({ score: h.score, v: h.explain?.vectorScore, k: h.explain?.keywordScore })))
+  );
+  const carriedByKeyword = explained.find(
+    (h) => h.explain?.vectorScore !== undefined && h.explain.keywordScore !== undefined && h.explain.keywordScore > h.explain.vectorScore
+  );
+  check(
+    "a keyword-carried hit exposes the weaker cosine",
+    carriedByKeyword === undefined || carriedByKeyword.explain!.vectorScore! < carriedByKeyword.score,
+    JSON.stringify(carriedByKeyword?.explain)
+  );
+  const withKeyword = explained.find((h) => h.explain?.keywordScore !== undefined);
+  check("explain reports a normalised BM25 for keyword hits", withKeyword !== undefined && withKeyword.explain!.keywordScore! >= 0 && withKeyword.explain!.keywordScore! <= 1, JSON.stringify(withKeyword?.explain));
+  check("keyword relevance ranks the best BM25 match at 1.0", explained.some((h) => h.explain?.keywordScore === 1), JSON.stringify(explained.map((h) => h.explain)));
+  const dual = explained.find((h) => h.legs.length === 2);
+  check("a dual-leg hit fuses both ranks", dual !== undefined && dual.explain!.rrfScore > 0 && dual.explain!.vectorRank !== undefined && dual.explain!.keywordRank !== undefined, JSON.stringify(dual?.explain));
+  const kwOnly = explained.find((h) => h.legs.length === 1 && h.legs[0] === "keyword");
+  check("a keyword-only hit is labelled as such", kwOnly === undefined || kwOnly.explain!.vectorScore === undefined, JSON.stringify(kwOnly?.explain));
+
+  // --- 10b. mid-reindex blocks every read --------------------------------------
+  setEmbedState("reindexing");
+  check("store state is visible as reindexing", getEmbedState() === "reindexing");
+  const blockedSearch = await rejects(() => kb.searchDocs("passport", 5), /reindex/i);
+  check("search refuses while the store is mid-reindex", blockedSearch);
+  const blockedRecall = await rejects(() => mem.recall("anything"), /reindex/i);
+  check("memory recall refuses while the store is mid-reindex", blockedRecall);
+  const blockedIngest = await rejects(() => kb.ingestText("should not land", "Blocked ingest"), /reindex/i);
+  check("ingest refuses while the store is mid-reindex", blockedIngest);
+  setEmbedState("ready");
+  check("search resumes once the store is coherent again", (await kb.searchDocs("passport", 5)).length > 0);
+
+  // --- 10c. reindex migrates in place ------------------------------------------
+  const chunksBefore = (db.prepare("SELECT COUNT(*) AS c FROM chunks").get() as { c: number }).c;
+  const memoriesBefore = (db.prepare("SELECT COUNT(*) AS c FROM memories").get() as { c: number }).c;
+  await mem.remember({ content: "The reindex test needs at least one memory row to migrate", type: "fact" });
+  const memoriesAfter = (db.prepare("SELECT COUNT(*) AS c FROM memories").get() as { c: number }).c;
+  check("the memory fixture row was stored", memoriesAfter === memoriesBefore + 1, JSON.stringify({ memoriesBefore, memoriesAfter }));
+
+  const progress: string[] = [];
+  const re = await reindex({ batchSize: 4, onProgress: (p) => progress.push(`${p.phase}:${p.done}/${p.total}`) });
+  check("reindex re-embeds every chunk", re.chunks === chunksBefore, JSON.stringify({ got: re.chunks, before: chunksBefore }));
+  check("reindex re-embeds every memory", re.memories === memoriesAfter, JSON.stringify({ got: re.memories, expected: memoriesAfter }));
+  check("reindex reports the model it migrated to", re.modelAfter.length > 0, JSON.stringify(re));
+  check("reindex restores the store to ready", getEmbedState() === "ready", getEmbedState());
+  check("reindex preserves the embedding dimension", re.dimAfter === getEmbedDim(), JSON.stringify({ dimAfter: re.dimAfter, stored: getEmbedDim() }));
+  check("reindex emits progress for both phases", progress.some((p) => p.startsWith("chunks")) && progress.some((p) => p.startsWith("memories")), progress.slice(0, 4).join(" "));
+  check("reindex emits a finalize step", progress.some((p) => p.startsWith("finalize")), progress.slice(-3).join(" "));
+
+  const afterReindex = await kb.searchDocs("notarised photo passport", 5);
+  check("documents are still searchable after reindex", afterReindex.length > 0, String(afterReindex.length));
+  check("reindex leaves no chunk vector missing", (db.prepare("SELECT COUNT(*) AS c FROM chunks WHERE embedding IS NULL").get() as { c: number }).c === 0);
+  check("reindex leaves no memory vector missing", (db.prepare("SELECT COUNT(*) AS c FROM memories WHERE embedding IS NULL").get() as { c: number }).c === 0);
+
+  // Idempotent: a second pass must not duplicate, drop, or corrupt anything.
+  const re2 = await reindex({ batchSize: 8 });
+  check("reindex is idempotent", re2.chunks === re.chunks && re2.memories === re.memories, JSON.stringify({ re2, re }));
+  check("reindex did not change the chunk count", (db.prepare("SELECT COUNT(*) AS c FROM chunks").get() as { c: number }).c === chunksBefore);
+
+  // --- 10d. dedup ceiling is configurable, not hardcoded -----------------------
+  const savedCap = process.env.KB_DEDUP_MAX_VECTORS;
+  process.env.KB_DEDUP_MAX_VECTORS = "0";
+  const capped = await mem.consolidate();
+  check("dedup is skipped at the configured ceiling", capped.skippedDedup === true, JSON.stringify(capped));
+  check("consolidate still runs at the ceiling", typeof capped.removedDuplicates === "number", JSON.stringify(capped));
+  if (savedCap === undefined) delete process.env.KB_DEDUP_MAX_VECTORS;
+  else process.env.KB_DEDUP_MAX_VECTORS = savedCap;
+  process.env.KB_DEDUP_MAX_VECTORS = "100000";
+  const uncapped = await mem.consolidate();
+  check("raising the ceiling re-enables dedup", uncapped.skippedDedup === false, JSON.stringify(uncapped));
+  if (savedCap === undefined) delete process.env.KB_DEDUP_MAX_VECTORS;
+  else process.env.KB_DEDUP_MAX_VECTORS = savedCap;
+
+  // --- 10e. vector cache warns before it becomes fatal -------------------------
+  const savedWarn = process.env.KB_VECTOR_CACHE_WARN_MB;
+  process.env.KB_VECTOR_CACHE_WARN_MB = "0.0001";
+  const { invalidateVectorCache } = await import("../knowledge/vector-search.js");
+  invalidateVectorCache();
+  let cacheWarn = "";
+  const realWrite = process.stderr.write.bind(process.stderr);
+  (process.stderr as unknown as { write: (c: string) => boolean }).write = (c: string) => {
+    if (typeof c === "string" && c.includes("vector cache")) cacheWarn += c;
+    return true;
+  };
+  await kb.searchDocs("passport", 3);
+  (process.stderr as unknown as { write: typeof realWrite }).write = realWrite;
+  invalidateVectorCache();
+  check("a large vector cache warns before it can OOM", cacheWarn.includes("MB"), cacheWarn.slice(0, 160));
+  check("the cache warning names the tuning knob", cacheWarn.includes("KB_VECTOR_CACHE_WARN_MB"), cacheWarn.slice(0, 160));
+  if (savedWarn === undefined) delete process.env.KB_VECTOR_CACHE_WARN_MB;
+  else process.env.KB_VECTOR_CACHE_WARN_MB = savedWarn;
+  invalidateVectorCache();
+
+  /* ================== 11. 2.8 HARDENING: EMBEDDER V2, ALPHA, RRF_K, BACKUP, DECAY, RESPONSIVENESS ================== */
+  console.log("\n=== 11. 2.8 Hardening ===");
+
+  // --- 11a. embedder v2 (word bi-grams) ---------------------------------------
+  const { tokenize } = await import("../knowledge/embedder.js");
+  const { modelName } = await import("../knowledge/embeddings.js");
+  check("local embedder reports the v2 model id (new vector space)", modelName() === "local-lexical-v2", modelName());
+  const bigramFeats = [...tokenize("alpha beta gamma")].filter((f) => f.startsWith("w2:"));
+  check("word bi-grams are part of the feature set", bigramFeats.includes("w2:alpha:beta") && bigramFeats.includes("w2:beta:gamma"), bigramFeats.join(" "));
+  check("bi-grams exist without stop words", [...tokenize("quick brown fox")].includes("w2:quick:brown"));
+  check("a stop word never closes a bi-gram", ![...tokenize("the quick fox")].includes("w2:the:quick") && ![...tokenize("the a an")].includes("w2:the:a"));
+
+  // --- 11b. alpha blend + KB_RRF_K ------------------------------------------
+  await kb.ingestText("plethoric interstice of the gnarled root", "Vector-only probe");
+  await kb.ingestText("plethora conclude", "Keyword probe");
+  const kwHit = await kb.searchDocs("plethora conclude", 10, 0.001, undefined, undefined, 0);
+  check("alpha=0 finds the keyword hit", kwHit.some((h: { content: string }) => h.content.includes("plethora")), JSON.stringify(kwHit.map((h: { content: string }) => h.content)));
+  check("alpha=0 drops the vector-only hit", kwHit.every((h: { content: string }) => !h.content.includes("interstice")), JSON.stringify(kwHit));
+  const vecHit = await kb.searchDocs("plethora conclude", 10, 0.001, undefined, undefined, 1);
+  check("alpha=1 surfaces the vector-only hit", vecHit.some((h: { content: string }) => h.content.includes("interstice")), JSON.stringify(vecHit.map((h: { content: string }) => h.content)));
+  const blended = await kb.searchDocs("plethora conclude", 20, 0.001, undefined, true, 0.4);
+  const blendFormula = blended.every((h: { score: number; explain?: { vectorScore?: number; keywordScore?: number } }) => {
+    const v = h.explain?.vectorScore ?? 0;
+    const k = h.explain?.keywordScore ?? 0;
+    return Math.abs(h.score - (0.4 * v + 0.6 * k)) < 1e-6;
+  });
+  check("blend score is exactly alpha*cosine + (1-alpha)*BM25 on every hit", blended.length > 0 && blendFormula, JSON.stringify(blended.map((h: { score: number; explain?: { vectorScore?: number } }) => ({ s: h.score, v: h.explain?.vectorScore }))));
+  check("alpha validation in the engine", await rejects(() => kb.searchDocs("x", 3, 0.001, undefined, false, 1.5), /between 0 and 1/i));
+
+  const ok60 = await kb.searchDocs("plethora conclude", 20, 0.001, undefined, true);
+  const dual60 = ok60.find((h: { explain?: { vectorRank?: number; keywordRank?: number; rrfScore?: number } }) => h.explain?.vectorRank !== undefined && h.explain?.keywordRank !== undefined);
+  check("a dual-leg hit exists to verify RRF math", dual60 !== undefined, JSON.stringify(ok60[0]));
+  if (dual60) {
+    const ex = dual60.explain as { vectorRank: number; keywordRank: number; rrfScore: number };
+    const expected60 = 1 / (60 + ex.vectorRank + 1) + 1 / (60 + ex.keywordRank + 1);
+    check("rrfScore matches the documented closed form (k=60)", Math.abs(ex.rrfScore - expected60) < 1e-5, `${ex.rrfScore} vs ${expected60}`);
+  }
+  const savedK = process.env.KB_RRF_K;
+  process.env.KB_RRF_K = "10";
+  const ok10 = await kb.searchDocs("plethora conclude", 20, 0.001, undefined, true);
+  const dual10 = ok10.find((h: { explain?: { vectorRank?: number; keywordRank?: number; rrfScore?: number } }) => h.explain?.vectorRank !== undefined && h.explain?.keywordRank !== undefined);
+  check("KB_RRF_K is honoured at call time", dual10 !== undefined && Math.abs((dual10.explain as { rrfScore: number }).rrfScore - (1 / (10 + (dual10.explain as { vectorRank: number }).vectorRank + 1) + 1 / (10 + (dual10.explain as { keywordRank: number }).keywordRank + 1))) < 1e-5, JSON.stringify(dual10?.explain));
+  if (savedK === undefined) delete process.env.KB_RRF_K;
+  else process.env.KB_RRF_K = savedK;
+
+  // --- 11c. backup / restore / integrity -------------------------------------
+  const { backupStore, restoreStore, integrityCheck, getDB: refreshDB } = await import("../db/database.js");
+  const bkPath = path.join(TEST_DB, "backups", "snapshot-11c.sqlite");
+  const beforeBackup = (refreshDB().prepare("SELECT COUNT(*) AS c FROM documents").get() as { c: number }).c;
+  const bkRep = backupStore(bkPath);
+  check("backup writes a consistent snapshot with integrity", fs.existsSync(bkPath) && bkRep.documents === beforeBackup && bkRep.integrity.ok === true, JSON.stringify(bkRep).slice(0, 160));
+  check("backup refuses to overwrite an existing file", await rejects(() => backupStore(bkPath)));
+  await kb.ingestText("restore victim payload with unique labelling quirks", "Restore victim");
+  const afterBackup = (refreshDB().prepare("SELECT COUNT(*) AS c FROM documents").get() as { c: number }).c;
+  check("store mutated after the backup was taken", afterBackup === beforeBackup + 1, `${beforeBackup} -> ${afterBackup}`);
+  const restRep = restoreStore(bkPath);
+  kb.invalidateVectorCache();
+  const restoredCount = (refreshDB().prepare("SELECT COUNT(*) AS c FROM documents").get() as { c: number }).c;
+  check("restore reverts the store and re-verifies integrity", restRep.documents === beforeBackup && restRep.integrity.ok === true && restoredCount === beforeBackup, JSON.stringify(restRep).slice(0, 160));
+  const lostDoc = await kb.searchDocs("restore victim", 5);
+  check("restored store no longer finds the lost document", lostDoc.every((h: { content: string }) => !h.content.includes("restore victim")), JSON.stringify(lostDoc.map((h: { content: string }) => h.content)));
+  const junk = path.join(TEST_DB, "junk-file.sqlite");
+  fs.writeFileSync(junk, "this is not a sqlite database");
+  const junkRep = integrityCheck(junk);
+  check("integrity check flags a corrupt file", junkRep.ok === false, JSON.stringify(junkRep));
+  fs.rmSync(path.dirname(bkPath), { recursive: true, force: true });
+  fs.rmSync(junk, { force: true });
+
+  // --- 11d. memory decay anchored on last activity ----------------------------
+  const stale = await mem.remember({ content: "decay probe: dormant low-value fact alpha", importance: 0.1, type: "fact", tags: ["decay-test"] });
+  const brushed = await mem.remember({ content: "decay probe: revisited low-value fact beta", importance: 0.1, type: "fact", tags: ["decay-test"] });
+  const savedPrune = process.env.KB_PRUNE;
+  const savedImp = process.env.KB_PRUNE_IMPORTANCE;
+  const savedAge = process.env.KB_PRUNE_AGE_DAYS;
+  const savedDedup = process.env.KB_DEDUP_MAX_VECTORS;
+  process.env.KB_PRUNE = "1";
+  process.env.KB_PRUNE_IMPORTANCE = "0.5";
+  process.env.KB_PRUNE_AGE_DAYS = "100";
+  process.env.KB_DEDUP_MAX_VECTORS = "100000";
+  const day = 86_400_000;
+  const decayNow = Date.now();
+  const liveMem = refreshDB();
+  liveMem.prepare("UPDATE memories SET created_at = ?, updated_at = ? WHERE id = ?").run(decayNow - 200 * day, decayNow - 200 * day, stale.id);
+  liveMem.prepare("UPDATE memories SET created_at = ?, updated_at = ? WHERE id = ?").run(decayNow - 200 * day, decayNow - 200 * day, brushed.id);
+  liveMem.prepare("UPDATE memories SET last_recalled = ? WHERE id = ?").run(decayNow - 5 * day, brushed.id);
+  const decRep = await mem.consolidate();
+  check("decay prunes a dormant memory older than the cutoff", mem.getMemory(stale.id) === null, JSON.stringify(decRep).slice(0, 160));
+  check("decay keeps a memory recalled within the window", mem.getMemory(brushed.id) !== null);
+  if (savedPrune === undefined) delete process.env.KB_PRUNE;
+  else process.env.KB_PRUNE = savedPrune;
+  if (savedImp === undefined) delete process.env.KB_PRUNE_IMPORTANCE;
+  else process.env.KB_PRUNE_IMPORTANCE = savedImp;
+  if (savedAge === undefined) delete process.env.KB_PRUNE_AGE_DAYS;
+  else process.env.KB_PRUNE_AGE_DAYS = savedAge;
+  if (savedDedup === undefined) delete process.env.KB_DEDUP_MAX_VECTORS;
+  else process.env.KB_DEDUP_MAX_VECTORS = savedDedup;
+
+  // --- 11e. ingest stays responsive (anti-stall) ------------------------------
+  const realSI: typeof setImmediate = globalThis.setImmediate.bind(globalThis);
+  let immediateCalls = 0;
+  const patchSI = ((cb: (...args: unknown[]) => void, ...rest: unknown[]) => {
+    immediateCalls++;
+    return realSI(cb, ...(rest as unknown[]));
+  }) as unknown as typeof setImmediate;
+  (globalThis as unknown as { setImmediate: typeof setImmediate }).setImmediate = patchSI;
+  try {
+    const filler = Array(12).fill("The expedition surveyed the salt flats at dawn with rationed water and a single broken compass.").join(" ");
+    const bigDoc = Array.from({ length: 140 }, (_, i) => `Section ${i}: ${filler}`).join("\n\n");
+    await kb.ingestText(bigDoc, "Responsiveness probe");
+  } finally {
+    (globalThis as unknown as { setImmediate: typeof setImmediate }).setImmediate = realSI;
+  }
+  check("ingest yields to the event loop during embedding", immediateCalls >= 8, `immediateCalls=${immediateCalls}`);
+
+  /* ================== 12. RESULTS ================== */
+  console.log("\n=== RESULTS ===");
+  console.log(`  Total:  ${passed + failed}`);
+  console.log(`  Passed: ${passed}`);
+  console.log(`  Failed: ${failed}`);
+  if (failed > 0) {
+    console.log("\nFailed:");
+    failures.forEach((f) => console.log(`  ❌ ${f}`));
+    process.exit(1);
+  } else {
+    console.log("All checks passed!");
+  }
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

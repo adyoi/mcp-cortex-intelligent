@@ -1,0 +1,32 @@
+{
+  "name": "mcp-cortex-intelligent",
+  "version": "0.1.0",
+  "description": "Cortex Intelligent MCP server: make ordinary LLMs smarter via offline cognitive augmentation. No API keys.",
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "bin": {
+    "mcp-cortex-intelligent": "dist/index.js",
+    "mcp-cortex-intelligent-cli": "dist/cli.js"
+  },
+  "scripts": {
+    "prebuild": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true})\"",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "lint": "oxlint src scripts .opencode/plugin --deny-warnings",
+    "clean-db": "tsx scripts/clean-all.ts",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "cli": "tsx src/cli.ts",
+    "test": "tsx src/test/test-all.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.5",
+    "oxlint": "^1.83.0",
+    "tsx": "^4.23.0",
+    "typescript": "^5.7.0"
+  }
+}
