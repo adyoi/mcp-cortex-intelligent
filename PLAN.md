@@ -605,7 +605,7 @@ Mandiri: API key, servis luar. Semua internal.
 ## 11. Struktur Repo
 
 ```
-D:\Project\mcp/
+D:/path/to/mcp-cortex-intelligent/
   PLAN.md, README.md, package.json, tsconfig*.json, .env.example
   src/
     index.ts, env.ts

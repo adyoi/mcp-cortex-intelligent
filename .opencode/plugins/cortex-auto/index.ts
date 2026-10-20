@@ -13,8 +13,8 @@ export default Plugin.define({
   async setup(ctx) {
     const root = ctx.location.directory;
     const cacheFile = root + "/.cortex-data/context-cache.json";
-    const cli = "D:/Project/mcp/dist/cli.js";
-    const cliTs = "D:/Project/mcp/src/cli.ts";
+    const cli = root + "/dist/cli.js";
+    const cliTs = root + "/src/cli.ts";
     const node = process.execPath;
 
     /**

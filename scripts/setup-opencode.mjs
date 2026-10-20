@@ -5,13 +5,15 @@ import * as os from "os";
 const home = os.homedir();
 const cfgDir = path.join(home, ".config", "opencode");
 const files = ["opencode.json", "opencode.jsonc"];
+const ROOT = path.resolve(__dirname, "..");
+const ROOT_FWD = ROOT.replace(/\\/g, "/");
 const entry = {
   type: "local",
-  command: ["node", "D:/Project/mcp/dist/index.js"],
-  cwd: "D:/Project/mcp",
-  environment: { CORTEX_DB_DIR: "D:/Project/mcp/.cortex-data" },
+  command: ["node", ROOT_FWD + "/dist/index.js"],
+  cwd: ROOT_FWD,
+  environment: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" },
 };
-const instr = "D:/Project/mcp/.opencode/instructions.md";
+const instr = ROOT_FWD + "/.opencode/instructions.md";
 
 for (const name of files) {
   const p = path.join(cfgDir, name);

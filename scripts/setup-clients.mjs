@@ -9,7 +9,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-const ROOT = "D:/Project/mcp";
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const ENTRY_MCP = { type: "local", command: ["node", ROOT + "/dist/index.js"], cwd: ROOT, environment: { CORTEX_DB_DIR: ROOT + "/.cortex-data" } };
 const ENTRY_MCP_SERVERS = { command: "node", args: [ROOT + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT + "/.cortex-data" } };
 
@@ -36,8 +36,8 @@ mergeJson(path.join(home, ".config", "opencode", "opencode.json"), (o) => {
   const instr = ROOT + "/.opencode/instructions.md";
   if (!o.instructions.includes(instr)) o.instructions.push(instr);
   o.plugins = Array.isArray(o.plugins) ? o.plugins : [];
-  const p1 = "file:///D:/Project/mcp-server/.opencode/plugin/session-logger.ts";
-  const p2 = "file:///D:/Project/mcp/.opencode/plugins/cortex-auto/index.ts";
+  const p1 = "file:///" + path.resolve(ROOT, "..", "mcp-server", ".opencode", "plugin", "session-logger.ts").replace(/\\/g, "/");
+  const p2 = "file:///" + path.resolve(ROOT, ".opencode", "plugins", "cortex-auto", "index.ts").replace(/\\/g, "/");
   for (const p of [p1, p2]) if (!o.plugins.includes(p)) o.plugins.push(p);
 });
 

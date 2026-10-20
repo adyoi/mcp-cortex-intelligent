@@ -84,9 +84,9 @@ Add to `~/.config/opencode/opencode.json`:
   "mcp": {
     "cortex": {
       "type": "local",
-      "command": ["node", "D:/Project/mcp/dist/index.js"],
-      "cwd": "D:/Project/mcp",
-      "environment": { "CORTEX_DB_DIR": "D:/Project/mcp/.cortex-data" }
+      "command": ["node", "D:/path/to/mcp-cortex-intelligent/dist/index.js"],
+      "cwd": "D:/path/to/mcp-cortex-intelligent",
+      "environment": { "CORTEX_DB_DIR": "D:/path/to/mcp-cortex-intelligent/.cortex-data" }
     }
   }
 }
