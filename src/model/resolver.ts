@@ -6,10 +6,15 @@ export function detectModel(opts: { arg?: string; env?: NodeJS.ProcessEnv; proje
   if (opts.env?.CORTEX_MODEL) return opts.env.CORTEX_MODEL;
   if (opts.env?.OPENCODE_MODEL) return opts.env.OPENCODE_MODEL;
   if (opts.projectRoot) {
-    try {
-      const cfg = JSON.parse(fs.readFileSync(path.join(opts.projectRoot, "opencode.json"), "utf8"));
-      if (cfg?.model) return cfg.model;
-    } catch { /* ignore */ }
+    for (const name of ["opencode.json", "opencode.jsonc"]) {
+      try {
+        const raw = fs.readFileSync(path.join(opts.projectRoot, name), "utf8");
+        // Strip JSONC comments (// and /* */) so opencode.jsonc parses.
+        const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+        const cfg = JSON.parse(stripped);
+        if (cfg?.model) return cfg.model;
+      } catch { /* try next */ }
+    }
   }
   return "unknown";
 }

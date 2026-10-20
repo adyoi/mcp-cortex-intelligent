@@ -177,8 +177,16 @@ reg(
     };
     if (args.ingest && res.ok && res.text) {
       try {
-        const doc = await ingestText(res.text, res.title || res.finalUrl, { source: args.source ?? "web", contentType: "text", metadata: { url: res.finalUrl } });
-        out.ingested = { id: doc.docId, title: doc.title };
+        // Dedup: skip if a document with this URL was already ingested.
+        const existing = listDocuments({ limit: 1000 }).documents.find((d) => {
+          try { return (JSON.parse((d as { metadata?: string }).metadata ?? "{}") as { url?: string }).url === res.finalUrl; } catch { return false; }
+        });
+        if (existing) {
+          out.ingested = { id: (existing as { id: string }).id, title: (existing as { title: string }).title, deduplicated: true };
+        } else {
+          const doc = await ingestText(res.text, res.title || res.finalUrl, { source: args.source ?? "web", contentType: "text", metadata: { url: res.finalUrl } });
+          out.ingested = { id: doc.docId, title: doc.title };
+        }
       } catch (e) {
         out.ingestError = (e as Error).message;
       }

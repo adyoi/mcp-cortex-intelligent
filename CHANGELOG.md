@@ -5,17 +5,33 @@ All notable changes to mcp-cortex-intelligent are documented here.
 ## [Unreleased]
 
 ### Added
-- `task_update` tool (update title/priority/owner/plan_ref/notes) — suite now 55 tools.
+- `task_update` tool (update title/priority/owner/plan_ref/notes) — suite now 57 tools.
 - `/cortex` slash command for full session initialization, plus 12 helper slash commands
   (`/bootstrap`, `/guardrails`, `/critique`, `/verify`, `/tasks`, `/task-new`, `/task-done`,
-  `/plan`, `/stats`, `/search`, `/remember`, `/recall`).
+  `/plan`, `/stats`, `/search`, `/remember`, `/recall`, `/webfetch`).
+- `webfetch` + `webfetch_validate` tools (SSRF guard, timeout, size cap, optional ingest).
+- Telemetry module: every tool call timed into bounded `telemetry` table; `system_stats` exposes summary.
+- `task_list` pagination (limit/offset + total).
+- `retrieve_exemplars` filter by `task_type`.
 - Seed default model profiles (weak/medium/strong) on first migration.
 - `publish.yml` workflow: npm Trusted Publishing (OIDC) on `v*` tags, idempotent skip when published.
+- `AGENTS.md` / (optional) `SKILLS.md` auto-created by `/cortex` (idempotent).
+- Mermaid flow diagram (AI Agent → SKILL.md → AGENTS.md → memory_context → PLAN.md → get_guardrails → CORTEX_EXECUTE ↔ TASK.md ↔ CORTEX_VERIFY).
 
 ### Changed
-- `get_guardrails`, `model_decision`, `cognitive_status` accept `project_root` for accurate model detection.
-- CLI `bootstrap` now pre-writes the plugin context cache (fast pre-response injection).
-- README + docs stats aligned to 55 tools / 247 checks.
+- `get_guardrails`, `model_decision`, `cognitive_status` accept `project_root` for accurate model detection (now reads `opencode.json` + `opencode.jsonc`).
+- Guardrails output is risk/route/tier-adaptive (English).
+- `self_critique` upgraded: weighted checklist, percent 0-100, severity, verdict, structured checks.
+- Cognitive Guardian agent & Cognitive Procedure skill upgraded to v1.1.0 (English).
+- CLI `bootstrap` pre-writes the plugin context cache (fast pre-response injection).
+- Plugin `cortex-auto` is async (non-blocking spawn) and tolerates missing `ctx.storage`.
+- README + docs stats aligned to 57 tools / 254 checks.
+- `taskRisk` refined (destructive verbs only high-risk when targeting real objects).
+
+### Fixed
+- Model detection now reads `opencode.jsonc` (OpenCode's actual config) in addition to `opencode.json`.
+- `webfetch` ingest dedups by URL (no duplicate docs).
+- Plugin no longer crashes when `ctx.storage` is unavailable.
 
 ## [0.1.0] - 2026-10-19
 

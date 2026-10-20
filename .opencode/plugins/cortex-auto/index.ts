@@ -84,14 +84,17 @@ export default Plugin.define({
     };
 
     // Bootstrap once per workspace (async — setup is awaited, not a hook).
-    const loaded = await ctx.storage.get("bootstrapped");
+    let loaded = false;
+    try {
+      loaded = (await ctx.storage.get("bootstrapped")) === true;
+    } catch { /* storage unavailable in this runtime - fall through to bootstrap */ }
     if (!loaded) {
       await runCli(["bootstrap", root]);
       try {
         fs.mkdirSync(root + "/.cortex-data", { recursive: true });
         fs.writeFileSync(root + "/.cortex-data/.bootstrapped", String(Date.now()));
       } catch { /* ignore */ }
-      await ctx.storage.set("bootstrapped", true);
+      try { await ctx.storage.set("bootstrapped", true); } catch { /* ignore */ }
     }
 
     // Inject context before every model dispatch. Synchronous reads only:
