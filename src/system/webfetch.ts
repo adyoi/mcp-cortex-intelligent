@@ -13,6 +13,10 @@ export const FETCH_TIMEOUT_MS = 20_000;
 export const MAX_FETCH_BYTES = 2_000_000;
 export const MAX_REDIRECTS = 3;
 export const DEFAULT_SNIPPET_CHARS = 2_000;
+export const FETCH_CACHE_TTL_MS = 60_000;
+
+const fetchCache = new Map<string, { result: unknown; ts: number }>();
+const CACHE_MAX = 200;
 
 const BLOCKED_HOST_PATTERNS = [
   /^localhost$/i,
@@ -121,6 +125,12 @@ export async function webFetch(rawUrl: string, opts: WebFetchOptions = {}): Prom
     } as FetchResult;
   }
 
+  const cacheKey = v.url.href;
+  const cached = fetchCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < FETCH_CACHE_TTL_MS) {
+    return cached.result as FetchResult;
+  }
+
   const timeoutMs = opts.timeoutMs ?? FETCH_TIMEOUT_MS;
   const maxBytes = opts.maxBytes ?? MAX_FETCH_BYTES;
   const maxChars = opts.maxChars ?? DEFAULT_SNIPPET_CHARS;
@@ -200,7 +210,7 @@ export async function webFetch(rawUrl: string, opts: WebFetchOptions = {}): Prom
   const { title, text } = isHtml ? htmlToText(raw) : { title: "", text: raw.trim() };
   const clipped = text.length > maxChars ? text.slice(0, maxChars) : text;
 
-  return {
+  const result: FetchResult = {
     url: rawUrl,
     finalUrl: current.href,
     status: response.status,
@@ -212,4 +222,11 @@ export async function webFetch(rawUrl: string, opts: WebFetchOptions = {}): Prom
     bytes,
     elapsedMs: Date.now() - started,
   };
+  fetchCache.set(cacheKey, { result, ts: Date.now() });
+  while (fetchCache.size > CACHE_MAX) {
+    const oldest = fetchCache.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    fetchCache.delete(oldest);
+  }
+  return result;
 }

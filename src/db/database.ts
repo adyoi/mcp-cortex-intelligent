@@ -201,8 +201,14 @@ function createSchema(db: DatabaseSync) {
       event TEXT,
       session_id TEXT,
       model TEXT,
-      payload TEXT
+      payload TEXT,
+      tool TEXT
     );
+    CREATE INDEX IF NOT EXISTS idx_telemetry_event ON telemetry(event);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_tool ON telemetry(tool);
+    if (!columnExists(db, "telemetry", "tool")) {
+      db.exec("ALTER TABLE telemetry ADD COLUMN tool TEXT;");
+    }
 
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,

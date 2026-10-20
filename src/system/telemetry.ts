@@ -10,8 +10,8 @@ const MAX_ROWS = 5000;
 export function recordToolCall(tool: string, ms: number, ok: boolean): void {
   try {
     const db = getDB();
-    db.prepare("INSERT INTO telemetry (ts, event, session_id, model, payload) VALUES (?,?,?,?,?)")
-      .run(Date.now(), "tool_call", null, null, JSON.stringify({ tool, ms, ok }));
+    db.prepare("INSERT INTO telemetry (ts, event, session_id, model, payload, tool) VALUES (?,?,?,?,?,?)")
+      .run(Date.now(), "tool_call", null, null, JSON.stringify({ tool, ms, ok }), tool);
     const { c } = db.prepare("SELECT COUNT(*) AS c FROM telemetry").get() as { c: number };
     if (c > MAX_ROWS) {
       db.prepare("DELETE FROM telemetry WHERE id IN (SELECT id FROM telemetry ORDER BY id ASC LIMIT ?)")

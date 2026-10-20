@@ -648,6 +648,9 @@ reg(
     provision(agentPath(args.project_root), agentAutoBlock(), AGENT_VERSION);
     provision(skillPath(args.project_root), skillAutoBlock(), SKILL_VERSION);
     pt.initAgentsMd(args.project_root);
+    if (process.env.CORTEX_AUTO_CONSOLIDATE === "1") {
+      try { const { consolidate } = await import("../memory/memory.js"); consolidate(); } catch { /* opt-in consolidation must not break bootstrap */ }
+    }
     return { content: [{ type: "text", text: JSON.stringify({ model, tier, decision: md, provisioned: true }) }] };
   }
 );
