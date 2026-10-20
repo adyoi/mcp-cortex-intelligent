@@ -66,38 +66,32 @@ dan keputusan internal — bukan dengan mengganti model.
 
 ### 4.1 Diagram lapisan
 
+```mermaid
+flowchart TB
+  Client["MCP Client (OpenCode)"] -->|stdio| Server["Cortex MCP Server (100% offline)"]
+  Server --> Provisioner["Provisioner<br/>agent and skill, marker-block"]
+  Server --> ModelGuard["Model Guard<br/>resolver, guardrails, decision"]
+  Server --> CogAug["Cognitive Augmentor<br/>exemplar, self-critique, compliance, verifier"]
+  Server --> KB["Knowledge Base<br/>hybrid search plus memory"]
+  Server --> Decision["Internal Decision Engine<br/>heuristics"]
+  Server --> SQLite[("SQLite + FTS5")]
+  Server --> Verifier["Verification Runner<br/>allowlist, sandbox"]
 ```
-+---------------------------------------------------------------+
-|                    MCP Client (OpenCode, dll.)                |
-|   model LLM biasa  --->  tools Cortex  --->  konteks/guardrail |
-+-----------------------------+---------------------------------+
-                              | stdio (MCP SDK)
-+-----------------------------v---------------------------------+
-|                Cortex MCP Server (100% offline)                |
-|                                                               |
-|  +----------------+  +----------------+  +------------------+  |
-|  | Provisioner    |  | Model Guard    |  | Cognitive        |  |
-|  | (agent/skill)  |  | (resolver,     |  | Augmentor        |  |
-|  | marker-block   |  |  registry,     |  | (exemplar,       |  |
-|  |                |  |  guardrails,   |  |  self-critique,  |  |
-|  |                |  |  decision)     |  |  compliance,     |  |
-|  |                |  |                |  |  verifier)       |  |
-|  +-------+--------+  +-------+--------+  +--------+---------+  |
-|          |                   |                    |            |
-|  +-------v-------------------v--------------------v---------+  |
-|  |              SQLite Store (node:sqlite) + FTS5            |  |
-|  |  documents, chunks, chunks_fts, memories, meta            |  |
-|  |  model_profiles, procedures, exemplars                    |  |
-|  |  session_state, verification_runs, cognitive_scores       |  |
-|  |  decisions, telemetry                                    |  |
-|  +----------------------------------------------------------+  |
-|  +----------------------------------------------------------+  |
-|  |  Verification Runner (child_process, allowlist, sandbox)  |  |
-|  +----------------------------------------------------------+  |
-|  +----------------------------------------------------------+  |
-|  |  Internal Decision Engine (heuristik/rules, deterministik)|  |
-|  +----------------------------------------------------------+  |
-+---------------------------------------------------------------+
+
+### 4.1b Plan & Task Flow
+
+```mermaid
+flowchart LR
+  A[AI Agent] --> B[SKILL.md]
+  B --> C[AGENTS.md]
+  C --> D[memory_context]
+  D --> E[PLAN.md]
+  E --> F[get_guardrails]
+  F --> G[CORTEX_EXECUTE]
+  G <--> H[TASK.md]
+  H <--> I[CORTEX_VERIFY]
+  I -- pass --> J[DONE]
+  I -- fail --> G
 ```
 
 ### 4.2 Komponen utama
