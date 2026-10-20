@@ -32,7 +32,7 @@ flowchart TB
 - **Model Awareness + Guardrails** — detects model tier (weak/medium/strong), injects anti-blunder procedures.
 - **Offline Cognitive Augmentor** — exemplar retrieval, structured self-critique, compliance scoring, verification runner.
 - **Internal Decision Engine** — fast deterministic decisions (tier/risk/route/compliance) via heuristics. No LLM.
-- **Plan & Task Management** — AGENT → SKILL → PLAN → TASK ↔ EXECUTE → DONE. Persistent task tracking.
+- **Plan & Task Management** — AI Agent → SKILL.md → AGENTS.md → PLAN.md ↔ CORTEX_EXECUTE ↔ TASK.md ↔ CORTEX_VERIFY → DONE. Persistent task tracking.
 - **Knowledge Base + Memory** — hybrid search (BM25 + vector + RRF), long-term memory with decay.
 
 ## Installation

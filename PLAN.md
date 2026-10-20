@@ -787,7 +787,7 @@ suggestions: ["Add has_tests", "Add has_verification"]
 3. Apakah self-critique perlu kriteria tambahan per bahasa (TS/Python/etc.)?
 4. Apakah verification runner perlu sandbox lebih ketat (container)?
 
-## 26. Plan & Task Management (AGENT → SKILL → PLAN → TASK ↔ EXECUTE → DONE)
+## 26. Plan & Task Management (AI Agent → SKILL.md → AGENTS.md → PLAN.md ↔ CORTEX_EXECUTE ↔ TASK.md ↔ CORTEX_VERIFY → DONE)
 
 ### 26.1 Konsep
 
