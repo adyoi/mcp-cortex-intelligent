@@ -205,10 +205,6 @@ function createSchema(db: DatabaseSync) {
       tool TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_telemetry_event ON telemetry(event);
-    CREATE INDEX IF NOT EXISTS idx_telemetry_tool ON telemetry(tool);
-    if (!columnExists(db, "telemetry", "tool")) {
-      db.exec("ALTER TABLE telemetry ADD COLUMN tool TEXT;");
-    }
 
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,
@@ -228,6 +224,11 @@ function createSchema(db: DatabaseSync) {
   if (!columnExists(db, "documents", "content_hash")) {
     db.exec("ALTER TABLE documents ADD COLUMN content_hash TEXT;");
   }
+  // Telemetry: `tool` column added after the first release (per-tool lookups).
+  if (!columnExists(db, "telemetry", "tool")) {
+    db.exec("ALTER TABLE telemetry ADD COLUMN tool TEXT;");
+  }
+  db.exec("CREATE INDEX IF NOT EXISTS idx_telemetry_tool ON telemetry(tool);");
   db.exec(
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_content_hash ON documents(content_hash) WHERE content_hash IS NOT NULL;"
   );
