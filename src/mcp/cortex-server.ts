@@ -639,6 +639,8 @@ reg(
     const md = modelDecision(model, "session_start", []);
     provision(agentPath(args.project_root), agentAutoBlock(), AGENT_VERSION);
     provision(skillPath(args.project_root), skillAutoBlock(), SKILL_VERSION);
+    pt.initAgentsMd(args.project_root);
+    pt.initSkillsMd(args.project_root);
     return { content: [{ type: "text", text: JSON.stringify({ model, tier, decision: md, provisioned: true }) }] };
   }
 );
