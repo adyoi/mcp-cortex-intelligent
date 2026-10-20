@@ -41,7 +41,7 @@ import { reindex } from "./knowledge/reindex.js";
 import { closeDB, STORAGE_DIR, backupStore, restoreStore } from "./db/database.js";
 import { detectModel, tierOf } from "./model/resolver.js";
 import { getGuardrails } from "./model/guardrails.js";
-import { initPlan, initTask, taskSummary, taskSyncMd, initAgentsMd, initSkillsMd } from "./plantask/manager.js";
+import { initPlan, initTask, taskSummary, taskSyncMd, initAgentsMd } from "./plantask/manager.js";
 import { provision } from "./provisioner/marker-block.js";
 import { agentAutoBlock, agentPath, AGENT_VERSION } from "./provisioner/agent-generator.js";
 import { skillAutoBlock, skillPath, SKILL_VERSION } from "./provisioner/skill-generator.js";
@@ -260,7 +260,6 @@ async function run(cmd: string, args: string[]) {
         initPlan(root);
         initTask(root);
         initAgentsMd(root);
-        initSkillsMd(root);
         // Write context cache for the plugin (fast pre-response injection).
         try {
           const ctx = await contextPrompt("session_start", 6);

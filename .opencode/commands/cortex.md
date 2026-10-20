@@ -4,7 +4,7 @@ description: <cortex> Initialize Cortex (bootstrap session, plan, task, guardrai
 Run the full Cortex initialization:
 1. Call `bootstrap_session` with project_root = current workspace.
 2. Call `init_plan` and `init_task` for current workspace.
-3. Call `init_agents_md` and `init_skills_md` for current workspace.
+3. Call `init_agents_md` for current workspace.
 4. Call `memory_context(topic="The Coder")`.
 5. Call `get_guardrails(task="session_start")`.
 6. Call `task_summary`.
