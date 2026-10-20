@@ -73,5 +73,54 @@ mergeJson(path.join(home, ".mcp.json"), (o) => {
   o.mcpServers.cortex = ENTRY_MCP_SERVERS;
 });
 
+// 6. KiloCode (VS Code globalStorage mcp_settings.json)
+const kilocodePaths = [
+  path.join(home, ".config", "Code", "User", "globalStorage", "kilocode.kilo-code", "settings", "mcp_settings.json"),
+  path.join(process.env.APPDATA || "", "Code", "User", "globalStorage", "kilocode.kilo-code", "settings", "mcp_settings.json"),
+];
+for (const kp of kilocodePaths) {
+  if (fs.existsSync(path.dirname(kp)) || process.platform === "win32") {
+    mergeJson(kp, (o) => {
+      o.mcpServers = o.mcpServers || {};
+      o.mcpServers.cortex = { ...ENTRY_MCP_SERVERS, disabled: false, autoApprove: [] };
+    });
+    break;
+  }
+}
+
+// 7. Cline (VS Code globalStorage mcp_settings.json)
+const clinePaths = [
+  path.join(home, ".config", "Code", "User", "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json"),
+  path.join(process.env.APPDATA || "", "Code", "User", "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json"),
+];
+for (const cp of clinePaths) {
+  if (fs.existsSync(path.dirname(cp)) || process.platform === "win32") {
+    mergeJson(cp, (o) => {
+      o.mcpServers = o.mcpServers || {};
+      o.mcpServers.cortex = { ...ENTRY_MCP_SERVERS, disabled: false, autoApprove: [] };
+    });
+    break;
+  }
+}
+
+// 8. Windsurf (Codeium)
+let windsurfPath;
+if (platform === "win32") windsurfPath = path.join(process.env.APPDATA || "", "Windsurf", "User", "mcp_config.json");
+else if (platform === "darwin") windsurfPath = path.join(home, "Library", "Application Support", "Windsurf", "User", "mcp_config.json");
+else windsurfPath = path.join(home, ".config", "Windsurf", "User", "mcp_config.json");
+mergeJson(windsurfPath, (o) => {
+  o.mcpServers = o.mcpServers || {};
+  o.mcpServers.cortex = ENTRY_MCP_SERVERS;
+});
+
+// 9. Zed (context_servers)
+const zedPath = platform === "win32"
+  ? path.join(process.env.APPDATA || "", "Zed", "settings.json")
+  : path.join(home, ".config", "zed", "settings.json");
+mergeJson(zedPath, (o) => {
+  o.context_servers = o.context_servers || {};
+  o.context_servers.cortex = { command: "node", args: [ROOT + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT + "/.cortex-data" } };
+});
+
 console.log("\nDone. Restart each client to load MCP Cortex.");
 console.log("Note: build first: npm run build");
