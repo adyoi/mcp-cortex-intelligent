@@ -78,22 +78,6 @@ flowchart TB
   Server --> Verifier["Verification Runner<br/>allowlist, sandbox"]
 ```
 
-### 4.1b Plan & Task Flow
-
-```mermaid
-flowchart LR
-  A[AI Agent] --> B[SKILL.md]
-  B --> C[AGENTS.md]
-  C --> D[memory_context]
-  D --> E[PLAN.md]
-  E --> F[get_guardrails]
-  F --> G[CORTEX_EXECUTE]
-  G <--> H[TASK.md]
-  H <--> I[CORTEX_VERIFY]
-  I -- pass --> J[DONE]
-  I -- fail --> G
-```
-
 ### 4.2 Komponen utama
 
 | Komponen | Tanggung jawab |
@@ -781,7 +765,7 @@ suggestions: ["Add has_tests", "Add has_verification"]
 3. Apakah self-critique perlu kriteria tambahan per bahasa (TS/Python/etc.)?
 4. Apakah verification runner perlu sandbox lebih ketat (container)?
 
-## 26. Plan & Task Management (AI Agent → SKILL.md → AGENTS.md → PLAN.md ↔ CORTEX_EXECUTE ↔ TASK.md ↔ CORTEX_VERIFY → DONE)
+## 26. Plan & Task Management
 
 ### 26.1 Konsep
 
