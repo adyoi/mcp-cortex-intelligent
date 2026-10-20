@@ -42,7 +42,7 @@ dan keputusan internal — bukan dengan mengganti model.
 
 ### 3.1 Dalam ruang lingkup
 
-- MCP server stdio dengan ~58 tools.
+- MCP server stdio dengan 57 tools.
 - Auto-provision file `.opencode/agents` dan `.opencode/skills`.
 - Deteksi model + profil tier + guardrails.
 - Decision internal (heuristik) untuk tier/risk/route/compliance.
@@ -403,7 +403,7 @@ tasks(
 
 ---
 
-## 7. Daftar Tools (45)
+## 7. Daftar Tools (57)
 
 ### 7.1 System
 
@@ -622,6 +622,7 @@ selain MCP SDK, zod, node:sqlite.
 - **F5**: Internal Decision Engine (decision_classify, decision_health, rules).
 - **F6**: Procedures Library + Telemetry + Polish (ingest procedure, cognitive_status, docs, lint/typecheck/test hijau).
 - **F7**: Plan & Task Management (init_plan, init_task, task_*, sync TASK.md, integrasi guardrails).
+- **F8**: Web Fetch + Docs Redesign (webfetch, webfetch_validate, GitHub Pages light/dark, mermaid flow).
 
 Setiap fase diakhiri: `npm test`, `npm run lint`, `npm run typecheck` hijau, plus commit.
 
@@ -644,7 +645,7 @@ Setiap fase diakhiri: `npm test`, `npm run lint`, `npm run typecheck` hijau, plu
 
 ## 14. Kriteria Selesai (Definition of Done)
 
-- [ ] Semua ~45 tools terdaftar dan lolos round-trip test.
+- [ ] Semua 57 tools terdaftar dan lolos round-trip test.
 - [ ] `npm test`, `npm run lint`, `npm run typecheck` hijau.
 - [ ] Bootstrap sesi menghasilkan agent & skill (idempotent, tidak timpa konten user).
 - [ ] Guardrails terinjeksi sesuai tier model.
@@ -678,9 +679,14 @@ Setiap fase diakhiri: `npm test`, `npm run lint`, `npm run typecheck` hijau, plu
 
 ## 18. Plugin Bootstrap (OpenCode)
 
-     agents/ (cognitive-guardian.md)
-     skills/ (cognitive-procedure/SKILL.md)
-     plugins/ (cortex-auto/index.ts)
+- File: `.opencode/plugins/cortex-auto/index.ts`.
+- Event: session start → panggil `bootstrap_session(project_root)`.
+- Debounce: maksimal 1x per 60 detik per workspace.
+- Spawn detached, `stdio: "ignore"`, `shell: false`.
+- Disable via env `CORTEX_AUTOSYNC=0` (plugin tetap, auto-sync mati).
+- Restart OpenCode diperlukan setelah pasang plugin.
+- Plugin async (non-blocking): hook context hanya baca cache; refresh di background.
+- Toleran terhadap `ctx.storage` yang tidak tersedia (try/catch).
 
 ## 19. Validasi Konfigurasi
 
@@ -722,29 +728,37 @@ Setiap fase diakhiri: `npm test`, `npm run lint`, `npm run typecheck` hijau, plu
 
 ## 23. Contoh Output
 
-### 23.1 Guardrails (tier weak, task code_edit)
+### 23.1 Guardrails (tier strong, task code_edit)
 
-```
-Model: claude-haiku (tier: weak)
-Prosedur wajib:
-1. Baca file target sebelum edit.
-2. Buat rencana singkat.
-3. Edit minimal.
-4. Jalankan test & lint.
-5. Review diff.
+```text
+Model: anthropic/claude-sonnet-4-6 (tier: strong)
+Task: code_edit
+Route: code_edit | Risk: low
+Concise (strong - fast but safe): Read -> Edit -> Verify.
+
 Anti-blunder:
-- Jangan asumsikan path ada.
-- Jangan edit mandiri baca.
-- Jangan skip verifikasi.
-Verifikasi: npm test, npm run lint, npm run typecheck
+- Do not assume a path exists; read first.
+- Do not edit without reading the full content.
+- Do not skip verification just because it looks simple.
+- Never store secrets / tokens / passwords.
+- Run `run_verification` before finishing.
+
+Verification: npm test, npm run lint, npm run typecheck. Recommend running before marking done.
 ```
 
 ### 23.2 Self-Critique
 
-```
-score: 0.5
-issues: ["Missing: has_tests", "Missing: has_verification"]
-suggestions: ["Add has_tests", "Add has_verification"]
+```json
+{
+  "score": 0.64,
+  "percent": 64,
+  "issues": ["[blocker] Destructive action without backup/rollback.", "[major] Code change without tests."],
+  "suggestions": ["Create a backup/rollback plan...", "Add a test that covers the new/changed behavior."],
+  "severity": "blocker",
+  "verdict": "blocked",
+  "tier": "weak",
+  "summary": "2/11 checks failed (64%). Top issue: Destructive action without backup/rollback."
+}
 ```
 
 ## 24. Glosarium
