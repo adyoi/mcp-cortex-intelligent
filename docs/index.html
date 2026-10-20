@@ -5,33 +5,48 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>mcp-cortex-intelligent — Cortex Intelligent MCP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#05060f;--bg2:#0a0e1f;--panel:rgba(12,18,40,.7);--panel2:rgba(20,28,60,.5);--neon:#00f0ff;--magenta:#ff2d95;--violet:#7c4dff;--text:#e6f1ff;--muted:#8aa0c8;--border:rgba(0,240,255,.2);--glow:0 0 20px rgba(0,240,255,.35);}
+/* ===== Theme tokens (default: LIGHT) ===== */
+:root{
+  --bg:#f4f7fb;--bg2:#eaf0f8;--panel:rgba(255,255,255,.85);--panel2:rgba(240,246,255,.7);
+  --neon:#0066cc;--magenta:#d63384;--violet:#6f42c1;--text:#1a2332;--muted:#5a6b85;
+  --border:rgba(0,102,204,.18);--glow:0 0 20px rgba(0,102,204,.12);
+  --code-bg:#0f172a;--code-fg:#e2e8f0;--grid:rgba(0,102,204,.06);
+}
+html.dark{
+  --bg:#05060f;--bg2:#0a0e1f;--panel:rgba(12,18,40,.7);--panel2:rgba(20,28,60,.5);
+  --neon:#00f0ff;--magenta:#ff2d95;--violet:#7c4dff;--text:#e6f1ff;--muted:#8aa0c8;
+  --border:rgba(0,240,255,.2);--glow:0 0 20px rgba(0,240,255,.35);
+  --code-bg:#050814;--code-fg:#a5f3fc;--grid:rgba(0,240,255,.05);
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:'Rajdhani',system-ui,sans-serif;font-size:16px;min-height:100vh;overflow-x:hidden}
-body::before{content:"";position:fixed;inset:0;background:linear-gradient(rgba(0,240,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.05) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0;animation:gridmove 20s linear infinite}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',system-ui,sans-serif;font-size:16px;min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s}
+body::before{content:"";position:fixed;inset:0;background:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0;animation:gridmove 20s linear infinite}
 @keyframes gridmove{0%{transform:translate(0,0)}100%{transform:translate(50px,50px)}}
-body::after{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 30%,rgba(124,77,255,.18),transparent 40%),radial-gradient(circle at 80% 70%,rgba(255,45,149,.15),transparent 40%);pointer-events:none;z-index:0}
+body::after{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 30%,rgba(124,77,255,.12),transparent 40%),radial-gradient(circle at 80% 70%,rgba(255,45,149,.1),transparent 40%);pointer-events:none;z-index:0}
 .container{max-width:1200px;margin:0 auto;padding:2rem 1.5rem;position:relative;z-index:1}
 header{display:flex;align-items:center;gap:1.5rem;margin-bottom:2rem;flex-wrap:wrap;padding:1.5rem;border:1px solid var(--border);border-radius:16px;background:var(--panel);backdrop-filter:blur(10px);box-shadow:var(--glow)}
 .logo{width:80px;height:80px;filter:drop-shadow(0 0 12px var(--neon))}
-h1{font-family:'Orbitron',monospace;font-size:2.2rem;background:linear-gradient(90deg,var(--neon),var(--violet),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:3px;text-shadow:0 0 20px rgba(0,240,255,.3)}
+h1{font-family:'Orbitron',monospace;font-size:2.2rem;background:linear-gradient(90deg,var(--neon),var(--violet),var(--magenta));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:3px;text-shadow:0 0 20px rgba(0,102,204,.2)}
+html.dark h1{text-shadow:0 0 20px rgba(0,240,255,.3)}
 .tagline{color:var(--muted);font-size:1.05rem;margin-top:.25rem;letter-spacing:1px}
-.nav{display:flex;gap:1.2rem;flex-wrap:wrap;margin:1.2rem 0 2rem;font-size:.9rem}
-.nav a{color:var(--muted);padding:.4rem .8rem;border:1px solid transparent;border-radius:6px;transition:all .2s;letter-spacing:1px;text-transform:uppercase}
-.nav a:hover{color:var(--neon);border-color:var(--neon);background:rgba(0,240,255,.08);text-decoration:none}
+.nav{display:flex;gap:1.2rem;flex-wrap:wrap;margin:1.2rem 0 2rem;font-size:.9rem;align-items:center}
+.nav a{color:var(--muted);padding:.4rem .8rem;border:1px solid transparent;border-radius:6px;transition:all .2s;letter-spacing:1px;text-transform:uppercase;text-decoration:none}
+.nav a:hover{color:var(--neon);border-color:var(--neon);background:rgba(0,102,204,.08)}
+html.dark .nav a:hover{background:rgba(0,240,255,.08)}
+.theme-toggle{margin-left:auto;padding:.4rem .8rem;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--neon);cursor:pointer;font-family:'Orbitron',monospace;font-size:.78rem;letter-spacing:1px}
 section{margin-bottom:3rem}
 h2{font-family:'Orbitron',monospace;font-size:1.5rem;margin-bottom:1rem;color:var(--neon);letter-spacing:2px;text-transform:uppercase;position:relative;padding-left:1rem}
 h2::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:4px;height:70%;background:linear-gradient(var(--neon),var(--magenta));border-radius:2px}
 h3{font-size:1.1rem;margin:1rem 0 .4rem;color:var(--magenta);font-family:'Orbitron',monospace;letter-spacing:1px}
-p{margin:.6rem 0;color:var(--text)}
+p{margin:.6rem 0;color:var(--text);line-height:1.6}
 ul,ol{margin:.5rem 0 1rem 1.5rem} li{margin:.3rem 0}
 .badges{display:flex;gap:.6rem;flex-wrap:wrap;margin:1rem 0}
-.badge{padding:.35rem .85rem;border:1px solid var(--neon);border-radius:4px;font-size:.78rem;color:var(--neon);background:rgba(0,240,255,.06);letter-spacing:1px;font-family:'Orbitron',monospace}
-.hero{background:linear-gradient(135deg,rgba(0,240,255,.08),rgba(124,77,255,.1),rgba(255,45,149,.06));border:1px solid var(--border);border-radius:16px;padding:2rem;margin-bottom:2rem;position:relative;overflow:hidden;backdrop-filter:blur(10px)}
-.hero::before{content:"";position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle,rgba(255,45,149,.25),transparent 70%);pointer-events:none}
+.badge{padding:.35rem .85rem;border:1px solid var(--neon);border-radius:4px;font-size:.78rem;color:var(--neon);background:rgba(0,102,204,.06);letter-spacing:1px;font-family:'Orbitron',monospace}
+html.dark .badge{background:rgba(0,240,255,.06)}
+.hero{background:linear-gradient(135deg,rgba(0,102,204,.08),rgba(124,77,255,.1),rgba(255,45,149,.06));border:1px solid var(--border);border-radius:16px;padding:2rem;margin-bottom:2rem;position:relative;overflow:hidden;backdrop-filter:blur(10px)}
 .hero p{max-width:820px;line-height:1.7;color:var(--muted)}
 .stats{display:flex;gap:1.5rem;flex-wrap:wrap;margin:1.5rem 0}
 .stat{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--neon);padding:.9rem 1.4rem;border-radius:8px;min-width:120px;backdrop-filter:blur(8px)}
@@ -40,16 +55,17 @@ ul,ol{margin:.5rem 0 1rem 1.5rem} li{margin:.3rem 0}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-bottom:2rem}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.25rem;transition:all .25s;backdrop-filter:blur(8px);position:relative;overflow:hidden}
 .card::before{content:"";position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,var(--neon),transparent)}
-.card:hover{transform:translateY(-6px);border-color:var(--magenta);box-shadow:0 8px 30px rgba(255,45,149,.2)}
+.card:hover{transform:translateY(-6px);border-color:var(--magenta);box-shadow:0 8px 30px rgba(214,51,132,.2)}
 .card h3{color:var(--neon);font-size:1rem;margin-bottom:.5rem;font-family:'Orbitron',monospace;letter-spacing:1px}
 .card p{color:var(--muted);font-size:.9rem;line-height:1.6}
 .tools{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:2rem;backdrop-filter:blur(8px)}
-.tools h2{margin-bottom:1rem}
 .tools table{width:100%;border-collapse:collapse;font-size:.82rem}
-.tools th,.tools td{padding:.55rem .75rem;border-bottom:1px solid rgba(0,240,255,.1);text-align:left;vertical-align:top}
-.tools th{color:var(--neon);font-family:'Orbitron',monospace;letter-spacing:1px;font-size:.75rem;text-transform:uppercase;background:rgba(0,240,255,.05)}
-.tools tr:hover td{background:rgba(0,240,255,.04)}
-.code{background:rgba(5,8,20,.8);border:1px solid var(--border);border-radius:8px;padding:1rem;font-family:Consolas,monospace;font-size:.85rem;overflow-x:auto;color:#a5f3fc;margin:.75rem 0;box-shadow:inset 0 0 20px rgba(0,0,0,.5)}
+.tools th,.tools td{padding:.55rem .75rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.tools th{color:var(--neon);font-family:'Orbitron',monospace;letter-spacing:1px;font-size:.75rem;text-transform:uppercase;background:rgba(0,102,204,.05)}
+html.dark .tools th{background:rgba(0,240,255,.05)}
+.tools tr:hover td{background:rgba(0,102,204,.04)}
+html.dark .tools tr:hover td{background:rgba(0,240,255,.04)}
+.code{background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);border-radius:8px;padding:1rem;font-family:'JetBrains Mono',Consolas,monospace;font-size:.85rem;overflow-x:auto;margin:.75rem 0;box-shadow:inset 0 0 20px rgba(0,0,0,.3);white-space:pre-wrap;word-break:break-word;line-height:1.55}
 table{width:100%;border-collapse:collapse;font-size:.85rem;margin:.75rem 0}
 th,td{padding:.5rem .75rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
 th{color:var(--neon);font-weight:600}
@@ -57,13 +73,22 @@ footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);col
 .mecha{position:fixed;bottom:10px;right:10px;width:140px;opacity:.12;pointer-events:none;animation:float 6s ease-in-out infinite}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @media(max-width:700px){h1{font-size:1.5rem}.tools table{font-size:.72rem}}
+.mermaid{margin:1rem 0}
 </style>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+(function(){
+  const saved = localStorage.getItem('cortex-theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const initial = saved || (prefersDark ? 'dark' : 'light');
+  if (initial === 'dark') document.documentElement.classList.add('dark');
+  window.__cortexTheme = initial;
+})();
+</script>
 </head>
 <body>
 <svg class="mecha" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <g stroke="#00f0ff" stroke-width="1.5" fill="none" opacity="0.9">
+  <g stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.9" style="color:var(--neon)">
     <polygon points="50,5 90,27 90,73 50,95 10,73 10,27"/>
     <polygon points="50,20 78,36 78,64 50,80 22,64 22,36"/>
     <circle cx="50" cy="50" r="12"/>
@@ -80,6 +105,7 @@ footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);col
       <h1>MCP-CORTEX-INTELLIGENT</h1>
       <div class="tagline">// MAKE ORDINARY LLMS SMARTER — OFFLINE · NO API KEYS · NO CLOUD</div>
     </div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">LIGHT</button>
   </header>
 
   <nav class="nav">
@@ -107,7 +133,7 @@ footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);col
 
   <div class="stats">
     <div class="stat"><b>57</b><span>MCP Tools</span></div>
-    <div class="stat"><b>247</b><span>Tests Passing</span></div>
+    <div class="stat"><b>254</b><span>Tests Passing</span></div>
     <div class="stat"><b>0</b><span>API Keys</span></div>
     <div class="stat"><b>100%</b><span>Offline</span></div>
   </div>
@@ -173,6 +199,7 @@ npm start</div>
 
   <section id="tools">
     <h2>Tools (57)</h2>
+    <div class="tools">
     <table>
       <tr><th>#</th><th>Tool</th><th>Purpose</th></tr>
       <tr><td>1</td><td>system_stats</td><td>DB, embedding, counts, verifier status</td></tr>
@@ -233,6 +260,7 @@ npm start</div>
       <tr><td>56</td><td>webfetch</td><td>Fetch URL (with SSRF guard, timeout, ingest option)</td></tr>
       <tr><td>57</td><td>webfetch_validate</td><td>Validate URL for webfetch (no fetch)</td></tr>
     </table>
+    </div>
   </section>
 
   <section id="workflow">
@@ -303,7 +331,8 @@ npm run lint
 npm run build
 npm test
 npm start
-  </div>
+    </div>
+  </section>
 
   <footer>
     mcp-cortex-intelligent — MIT License — Built for OpenCode & any MCP client.<br/>
@@ -311,5 +340,33 @@ npm start
     <a href="https://github.com/adyoi/mcp-cortex-intelligent/blob/main/PLAN.md" style="color:var(--neon)">PLAN.md</a>
   </footer>
 </div>
+<script>
+function toggleTheme(){
+  const html = document.documentElement;
+  const isDark = html.classList.toggle('dark');
+  localStorage.setItem('cortex-theme', isDark ? 'dark' : 'light');
+  document.getElementById('themeToggle').textContent = isDark ? 'DARK' : 'LIGHT';
+  updateMermaid(isDark);
+}
+function updateMermaid(isDark){
+  if (window.mermaid) {
+    mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' });
+    document.querySelectorAll('.mermaid').forEach(el => { if (!el.dataset.rendered) { mermaid.run({ nodes: [el] }); el.dataset.rendered = '1'; } });
+  }
+}
+(function init(){
+  const saved = localStorage.getItem('cortex-theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const initial = saved || (prefersDark ? 'dark' : 'light');
+  if (initial === 'dark') document.documentElement.classList.add('dark');
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = initial === 'dark' ? 'DARK' : 'LIGHT';
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.mermaid) {
+      mermaid.initialize({ startOnLoad: true, theme: initial === 'dark' ? 'dark' : 'default' });
+    }
+  });
+})();
+</script>
 </body>
 </html>
