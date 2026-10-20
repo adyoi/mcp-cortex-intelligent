@@ -4,6 +4,7 @@ dist/
 .test-data/
 .smoke-data*/
 .env
+*.bak
 *.bak-*
 *.sqlite
 *.sqlite-*

@@ -19,10 +19,15 @@
     "dist/decision",
     "dist/procedures",
     "dist/plantask",
+    "dist/system",
     "README.md",
     "LICENSE",
     ".env.example"
   ],
+  "repository": { "type": "git", "url": "https://github.com/adyoi/mcp-cortex-intelligent.git" },
+  "bugs": { "url": "https://github.com/adyoi/mcp-cortex-intelligent/issues" },
+  "homepage": "https://github.com/adyoi/mcp-cortex-intelligent#readme",
+  "keywords": ["mcp","model-context-protocol","offline","cognitive","guardrails","memory","knowledge","agent","skill","opencode","llm","augmentation"],
   "bin": {
     "mcp-cortex-intelligent": "dist/index.js",
     "mcp-cortex-intelligent-cli": "dist/cli.js"
