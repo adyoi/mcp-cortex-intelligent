@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="description" content="mcp-cortex-intelligent — offline MCP server that augments ordinary LLMs with context, procedures, memory, exemplars, verification, and an internal decision engine. No API keys."/>
 <title>mcp-cortex-intelligent — Cortex Intelligent MCP</title>
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -23,6 +25,7 @@ html.dark{
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--text);font-family:'Rajdhani',system-ui,sans-serif;font-size:16px;min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s}
+@media (prefers-reduced-motion: reduce){body::before{animation:none} .card{transition:none} .card:hover{transform:none} .mecha{animation:none}}
 body::before{content:"";position:fixed;inset:0;background:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0;animation:gridmove 20s linear infinite}
 @keyframes gridmove{0%{transform:translate(0,0)}100%{transform:translate(50px,50px)}}
 body::after{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 30%,rgba(124,77,255,.12),transparent 40%),radial-gradient(circle at 80% 70%,rgba(255,45,149,.1),transparent 40%);pointer-events:none;z-index:0}
@@ -59,7 +62,7 @@ html.dark .badge{background:rgba(0,240,255,.06)}
 .card:hover{transform:translateY(-6px);border-color:var(--magenta);box-shadow:0 8px 30px rgba(214,51,132,.2)}
 .card h3{color:var(--neon);font-size:1rem;margin-bottom:.5rem;font-family:'Orbitron',monospace;letter-spacing:1px}
 .card p{color:var(--muted);font-size:.9rem;line-height:1.6}
-.tools{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:2rem;backdrop-filter:blur(8px)}
+.tools{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:2rem;backdrop-filter:blur(8px);overflow-x:auto}
 .tools table{width:100%;border-collapse:collapse;font-size:.82rem}
 .tools th,.tools td{padding:.55rem .75rem;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
 .tools th{color:var(--neon);font-family:'Orbitron',monospace;letter-spacing:1px;font-size:.75rem;text-transform:uppercase;background:rgba(0,102,204,.05)}
@@ -74,7 +77,7 @@ footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);col
 .mecha{position:fixed;bottom:10px;right:10px;width:140px;opacity:.12;pointer-events:none;animation:float 6s ease-in-out infinite}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @media(max-width:700px){h1{font-size:1.5rem}.tools table{font-size:.72rem}}
-.mermaid{margin:1rem 0}
+:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
@@ -101,12 +104,12 @@ footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);col
 </svg>
 <div class="container">
   <header>
-    <img src="assets/logo.svg" alt="logo" class="logo"/>
+    <img src="assets/logo.svg" alt="logo" class="logo" loading="lazy" width="80" height="80"/>
     <div>
       <h1>MCP-CORTEX-INTELLIGENT</h1>
       <div class="tagline">// MAKE ORDINARY LLMS SMARTER — OFFLINE · NO API KEYS · NO CLOUD</div>
     </div>
-    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">LIGHT</button>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle color theme" aria-pressed="false">LIGHT</button>
   </header>
 
   <nav class="nav">
@@ -347,6 +350,7 @@ function toggleTheme(){
   const isDark = html.classList.toggle('dark');
   localStorage.setItem('cortex-theme', isDark ? 'dark' : 'light');
   document.getElementById('themeToggle').textContent = isDark ? 'DARK' : 'LIGHT';
+  document.getElementById('themeToggle').setAttribute('aria-pressed', String(isDark));
   updateMermaid(isDark);
 }
 function updateMermaid(isDark){
