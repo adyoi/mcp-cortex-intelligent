@@ -38,11 +38,14 @@ flowchart TB
 flowchart LR
   A[AI Agent] --> B[SKILL.md]
   B --> C[AGENTS.md]
-  C --> D[PLAN.md]
-  D <--> E[CORTEX_EXECUTE]
-  E <--> F[TASK.md]
-  F <--> G[CORTEX_VERIFY]
-  G --> H[DONE]
+  C --> D[memory_context]
+  D --> E[PLAN.md]
+  E --> F[get_guardrails]
+  F --> G[CORTEX_EXECUTE]
+  G <--> H[TASK.md]
+  H <--> I[CORTEX_VERIFY]
+  I -- pass --> J[DONE]
+  I -- fail --> G
 ```
 - **Knowledge Base + Memory** — hybrid search (BM25 + vector + RRF), long-term memory with decay.
 
@@ -139,11 +142,14 @@ Add to `~/.config/opencode/opencode.json`:
 flowchart LR
   A[AI Agent] --> B[SKILL.md]
   B --> C[AGENTS.md]
-  C --> D[PLAN.md]
-  D <--> E[CORTEX_EXECUTE]
-  E <--> F[TASK.md]
-  F <--> G[CORTEX_VERIFY]
-  G --> H[DONE]
+  C --> D[memory_context]
+  D --> E[PLAN.md]
+  E --> F[get_guardrails]
+  F --> G[CORTEX_EXECUTE]
+  G <--> H[TASK.md]
+  H <--> I[CORTEX_VERIFY]
+  I -- pass --> J[DONE]
+  I -- fail --> G
 ```
 
 ### Steps
