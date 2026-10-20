@@ -858,6 +858,8 @@ reg("update_plan_section", { description: "Update a PLAN.md section by heading."
 
 reg("init_task", { description: "Initialize TASK.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.initTask(args.project_root)) }] }));
+reg("init_agents_md", { description: "Initialize AGENTS.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
+  async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.initAgentsMd(args.project_root)) }] }));
 
 reg("task_create", { description: "Create a new task.", inputSchema: { title: z.string().min(1), plan_ref: z.string().optional(), priority: z.number().int().optional(), owner: z.string().optional() } },
   async (args: { title: string; plan_ref?: string; priority?: number; owner?: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskCreate(args.title, args.plan_ref, args.priority ?? 0, args.owner)) }] }));

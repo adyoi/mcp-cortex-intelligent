@@ -92,7 +92,7 @@ Add to `~/.config/opencode/opencode.json`:
 }
 ```
 
-## Tools (57)
+## Tools (58)
 
 | Group | Count | Tools |
 |---|---|---|
