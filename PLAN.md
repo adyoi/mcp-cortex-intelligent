@@ -622,7 +622,9 @@ D:\Project\mcp/
     test/               (test-all)
   .opencode/
     instructions.md
-    plugin/cortex-bootstrap.ts
+     agents/ (cognitive-guardian.md)
+     skills/ (cognitive-procedure/SKILL.md)
+     plugins/ (cortex-auto/index.ts)
   docs/
 ```
 
@@ -697,12 +699,9 @@ Setiap fase diakhiri: `npm test`, `npm run lint`, `npm run typecheck` hijau, plu
 
 ## 18. Plugin Bootstrap (OpenCode)
 
-- File: `.opencode/plugin/cortex-bootstrap.ts`.
-- Event: session start → panggil `bootstrap_session(project_root)`.
-- Debounce: maksimal 1x per 60 detik per workspace.
-- Spawn detached, `stdio: "ignore"`, `shell: false`.
-- Disable via env `CORTEX_AUTOSYNC=0` (plugin tetap, auto-sync mati).
-- Restart OpenCode diperlukan setelah pasang plugin.
+     agents/ (cognitive-guardian.md)
+     skills/ (cognitive-procedure/SKILL.md)
+     plugins/ (cortex-auto/index.ts)
 
 ## 19. Validasi Konfigurasi
 
