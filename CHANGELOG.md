@@ -31,7 +31,12 @@ All notable changes to mcp-cortex-intelligent are documented here.
 ### Fixed
 - Model detection now reads `opencode.jsonc` (OpenCode's actual config) in addition to `opencode.json`.
 - `webfetch` ingest dedups by URL (no duplicate docs).
+- `CONTRIBUTING.md` + `SECURITY.md` added; docs placeholder `D:/path/to` → `~/mcp-cortex-intelligent`; `/cortex.md` now references both `init_agents_md` and `provision_agent_skill`.
 - Plugin no longer crashes when `ctx.storage` is unavailable.
+- Telemetry `telemetry` table: added `tool` column (`ALTER` migration) + `idx_telemetry_tool`; `recordToolCall` writes tool name; bounded table maintained.
+- `webfetch`: bounded in-memory fetch-cache (TTL 60s, LRU cap 200) + `webfetch_validate` stays SSRF-safe.
+- `bootstrap_session`: opt-in `CORTEX_AUTO_CONSOLIDATE=1` triggers memory consolidation.
+- Test suite split into per-module files (`src/test/modules/`: embedder, chunker, webfetch, telemetry, guardrails, self-critique); master `test-all.ts` preserved (258 checks verified).
 
 ## [0.1.0] - 2026-10-19
 
