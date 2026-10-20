@@ -33,20 +33,6 @@ flowchart TB
 - **Offline Cognitive Augmentor** — exemplar retrieval, structured self-critique, compliance scoring, verification runner.
 - **Internal Decision Engine** — fast deterministic decisions (tier/risk/route/compliance) via heuristics. No LLM.
 - **Plan & Task Management** — AI Agent → SKILL.md → AGENTS.md → PLAN.md ↔ CORTEX_EXECUTE ↔ TASK.md ↔ CORTEX_VERIFY → DONE. Persistent task tracking.
-
-```mermaid
-flowchart LR
-  A[AI Agent] --> B[SKILL.md]
-  B --> C[AGENTS.md]
-  C --> D[memory_context]
-  D --> E[PLAN.md]
-  E --> F[get_guardrails]
-  F --> G[CORTEX_EXECUTE]
-  G <--> H[TASK.md]
-  H <--> I[CORTEX_VERIFY]
-  I -- pass --> J[DONE]
-  I -- fail --> G
-```
 - **Knowledge Base + Memory** — hybrid search (BM25 + vector + RRF), long-term memory with decay.
 
 ## Installation
