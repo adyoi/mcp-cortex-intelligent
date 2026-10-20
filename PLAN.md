@@ -42,7 +42,7 @@ dan keputusan internal — bukan dengan mengganti model.
 
 ### 3.1 Dalam ruang lingkup
 
-- MCP server stdio dengan 57 tools.
+- MCP server stdio dengan 58 tools.
 - Auto-provision file `.opencode/agents` dan `.opencode/skills`.
 - Deteksi model + profil tier + guardrails.
 - Decision internal (heuristik) untuk tier/risk/route/compliance.
@@ -403,7 +403,7 @@ tasks(
 
 ---
 
-## 7. Daftar Tools (57)
+## 7. Daftar Tools (58)
 
 ### 7.1 System
 
@@ -645,7 +645,7 @@ Setiap fase diakhiri: `npm test`, `npm run lint`, `npm run typecheck` hijau, plu
 
 ## 14. Kriteria Selesai (Definition of Done)
 
-- [ ] Semua 57 tools terdaftar dan lolos round-trip test.
+- [ ] Semua 58 tools terdaftar dan lolos round-trip test.
 - [ ] `npm test`, `npm run lint`, `npm run typecheck` hijau.
 - [ ] Bootstrap sesi menghasilkan agent & skill (idempotent, tidak timpa konten user).
 - [ ] Guardrails terinjeksi sesuai tier model.
