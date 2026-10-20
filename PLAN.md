@@ -557,15 +557,16 @@ tasks(
 
 ### 8.4 Plan & Task Loop
 
-1. Bootstrap → `init_plan` + `init_task`.
-2. Agent baca PLAN.md → tentukan task berikutnya.
-3. `task_list(status="todo")` → pilih task.
-4. `task_start(id)` → doing.
-5. Kerjakan (EXECUTE) dengan guardrails + verification.
-6. `task_done(id)` setelah verifikasi lulus.
-7. Jika gagal → `task_block(id, reason)`.
-8. `task_sync_md()` → tulis TASK.md.
-9. Ulangi sampai semua done.
+1. `memory_context` → konteks memori.
+2. `get_guardrails` → checklist anti-blunder.
+3. `init_plan` + `init_task`.
+4. Agent baca PLAN.md → tentukan task berikutnya.
+5. `task_list(status="todo")` → pilih task.
+6. `task_start(id)` → doing.
+7. `CORTEX_EXECUTE` (kerjakan dengan guardrails + verification).
+8. `CORTEX_VERIFY` → lulus → `task_done(id)`; gagal → `task_block(id, reason)` / revisi.
+9. `task_sync_md()` → tulis TASK.md.
+10. Ulangi sampai semua done.
 
 ## 9. Konfigurasi (Env)
 
@@ -793,13 +794,18 @@ suggestions: ["Add has_tests", "Add has_verification"]
 Model menjadi "lebih pintar" tidak hanya dari konteks/prosedur, tetapi dari
 **pelacakan pekerjaan**: apa yang sudah dikerjakan vs belum. Siklus:
 
-```
-AGENT (persona)
-  -> SKILL (prosedur)
-     -> PLAN (rencana, PLAN.md)
-        -> TASK (daftar tugas, TASK.md)
-           <-> EXECUTE (kerjakan)
-              -> DONE (tandai selesai)
+```mermaid
+flowchart LR
+  A[AI Agent] --> B[SKILL.md]
+  B --> C[AGENTS.md]
+  C --> D[memory_context]
+  D --> E[PLAN.md]
+  E --> F[get_guardrails]
+  F --> G[CORTEX_EXECUTE]
+  G <--> H[TASK.md]
+  H <--> I[CORTEX_VERIFY]
+  I -- pass --> J[DONE]
+  I -- fail --> G
 ```
 
 MCP menginisialisasi & mengelola `PLAN.md` dan `TASK.md` agar model selalu tahu
