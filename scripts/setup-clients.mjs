@@ -1,17 +1,12 @@
-/**
- * Auto-setup MCP Cortex Intelligent for multiple clients:
- * OpenCode, Claude Desktop, Cursor, VS Code, and others (generic mcpServers).
- *
- * Merges a "cortex" entry into each client's config (idempotent, backup first).
- * Run: node scripts/setup-clients.mjs
- */
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const ENTRY_MCP = { type: "local", command: ["node", ROOT + "/dist/index.js"], cwd: ROOT, environment: { CORTEX_DB_DIR: ROOT + "/.cortex-data" } };
-const ENTRY_MCP_SERVERS = { command: "node", args: [ROOT + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT + "/.cortex-data" } };
+const ROOT = path.resolve(process.cwd());
+const ROOT_FWD = ROOT.replace(/\\/g, "/");
+
+const ENTRY_MCP = { type: "local", command: ["node", ROOT_FWD + "/dist/index.js"], cwd: ROOT_FWD, environment: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
+const ENTRY_MCP_SERVERS = { command: "node", args: [ROOT_FWD + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
 
 function mergeJson(p, mutate) {
   let obj = {};
@@ -19,6 +14,10 @@ function mergeJson(p, mutate) {
     try { obj = JSON.parse(fs.readFileSync(p, "utf8")); } catch { obj = {}; }
   }
   mutate(obj);
+  // Clean stale/bad entries (e.g. D:/D:/ double-drive paths from older versions).
+  const cleanArr = (arr) => Array.isArray(arr) ? arr.filter((x) => typeof x === "string" && !/D:\/D:|D:\\\\D:\\\\/i.test(x)) : arr;
+  if (Array.isArray(obj.instructions)) obj.instructions = cleanArr(obj.instructions);
+  if (Array.isArray(obj.plugins)) obj.plugins = cleanArr(obj.plugins);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   if (fs.existsSync(p)) fs.copyFileSync(p, p + ".bak");
   fs.writeFileSync(p, JSON.stringify(obj, null, 2) + "\n");
@@ -33,13 +32,30 @@ mergeJson(path.join(home, ".config", "opencode", "opencode.json"), (o) => {
   o.mcp = o.mcp || {};
   o.mcp.cortex = ENTRY_MCP;
   o.instructions = Array.isArray(o.instructions) ? o.instructions : [];
-  const instr = ROOT + "/.opencode/instructions.md";
+  const instr = ROOT_FWD + "/.opencode/instructions.md";
   if (!o.instructions.includes(instr)) o.instructions.push(instr);
+  // Clean stale/duplicate/bad plugin entries; keep only valid cortex-auto.
   o.plugins = Array.isArray(o.plugins) ? o.plugins : [];
-  const p1 = "file:///" + path.resolve(ROOT, "..", "mcp-server", ".opencode", "plugin", "session-logger.ts").replace(/\\/g, "/");
-  const p2 = "file:///" + path.resolve(ROOT, ".opencode", "plugins", "cortex-auto", "index.ts").replace(/\\/g, "/");
-  for (const p of [p1, p2]) if (!o.plugins.includes(p)) o.plugins.push(p);
+  const plug = "file:///" + ROOT_FWD + "/.opencode/plugins/cortex-auto/index.ts";
+  o.plugins = [...new Set(o.plugins.filter((x) => x === plug))];
+  if (o.plugins.length === 0) o.plugins.push(plug);
 });
+
+// Also clean opencode.jsonc if present
+const jsoncPath = path.join(home, ".config", "opencode", "opencode.jsonc");
+if (fs.existsSync(jsoncPath)) {
+  mergeJson(jsoncPath, (o) => {
+    o.mcp = o.mcp || {};
+    o.mcp.cortex = ENTRY_MCP;
+    o.instructions = Array.isArray(o.instructions) ? o.instructions : [];
+    const instr = ROOT_FWD + "/.opencode/instructions.md";
+    if (!o.instructions.includes(instr)) o.instructions.push(instr);
+    o.plugins = Array.isArray(o.plugins) ? o.plugins : [];
+    const plug = "file:///" + ROOT_FWD + "/.opencode/plugins/cortex-auto/index.ts";
+    o.plugins = [...new Set(o.plugins.filter((x) => x === plug))];
+    if (o.plugins.length === 0) o.plugins.push(plug);
+  });
+}
 
 // 2. Claude Desktop
 let claudePath;
@@ -67,19 +83,19 @@ mergeJson(vscodePath, (o) => {
   o.servers.cortex = { type: "stdio", ...ENTRY_MCP_SERVERS };
 });
 
-// 5. Generic: ~/.mcp.json (some clients)
+// 5. Generic: ~/.mcp.json
 mergeJson(path.join(home, ".mcp.json"), (o) => {
   o.mcpServers = o.mcpServers || {};
   o.mcpServers.cortex = ENTRY_MCP_SERVERS;
 });
 
-// 6. KiloCode (VS Code globalStorage mcp_settings.json)
+// 6. KiloCode
 const kilocodePaths = [
   path.join(home, ".config", "Code", "User", "globalStorage", "kilocode.kilo-code", "settings", "mcp_settings.json"),
   path.join(process.env.APPDATA || "", "Code", "User", "globalStorage", "kilocode.kilo-code", "settings", "mcp_settings.json"),
 ];
 for (const kp of kilocodePaths) {
-  if (fs.existsSync(path.dirname(kp)) || process.platform === "win32") {
+  if (fs.existsSync(path.dirname(kp))) {
     mergeJson(kp, (o) => {
       o.mcpServers = o.mcpServers || {};
       o.mcpServers.cortex = { ...ENTRY_MCP_SERVERS, disabled: false, autoApprove: [] };
@@ -88,13 +104,13 @@ for (const kp of kilocodePaths) {
   }
 }
 
-// 7. Cline (VS Code globalStorage mcp_settings.json)
+// 7. Cline
 const clinePaths = [
   path.join(home, ".config", "Code", "User", "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json"),
   path.join(process.env.APPDATA || "", "Code", "User", "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json"),
 ];
 for (const cp of clinePaths) {
-  if (fs.existsSync(path.dirname(cp)) || process.platform === "win32") {
+  if (fs.existsSync(path.dirname(cp))) {
     mergeJson(cp, (o) => {
       o.mcpServers = o.mcpServers || {};
       o.mcpServers.cortex = { ...ENTRY_MCP_SERVERS, disabled: false, autoApprove: [] };
@@ -103,7 +119,7 @@ for (const cp of clinePaths) {
   }
 }
 
-// 8. Windsurf (Codeium)
+// 8. Windsurf
 let windsurfPath;
 if (platform === "win32") windsurfPath = path.join(process.env.APPDATA || "", "Windsurf", "User", "mcp_config.json");
 else if (platform === "darwin") windsurfPath = path.join(home, "Library", "Application Support", "Windsurf", "User", "mcp_config.json");
@@ -113,13 +129,13 @@ mergeJson(windsurfPath, (o) => {
   o.mcpServers.cortex = ENTRY_MCP_SERVERS;
 });
 
-// 9. Zed (context_servers)
+// 9. Zed
 const zedPath = platform === "win32"
   ? path.join(process.env.APPDATA || "", "Zed", "settings.json")
   : path.join(home, ".config", "zed", "settings.json");
 mergeJson(zedPath, (o) => {
   o.context_servers = o.context_servers || {};
-  o.context_servers.cortex = { command: "node", args: [ROOT + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT + "/.cortex-data" } };
+  o.context_servers.cortex = { command: "node", args: [ROOT_FWD + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
 });
 
 console.log("\nDone. Restart each client to load MCP Cortex.");
