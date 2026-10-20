@@ -2,6 +2,7 @@ import { getDB, newId, nowMs, packVector, unpackVector } from "../db/database.js
 import { dotProduct } from "../knowledge/embedder.js";
 import { estimateTokensFromChars } from "../knowledge/chunker.js";
 import { embedText } from "../knowledge/embeddings.js";
+import { searchDocs } from "../knowledge/pipeline.js";
 import { vectorSearch, invalidateVectorCache } from "../knowledge/vector-search.js";
 
 export const MEMORY_TYPES = [
@@ -435,10 +436,20 @@ export function memoryStats(): { memories: number; tokens: number; avgImportance
 }
 
 export async function contextPrompt(query: string, topK = 6): Promise<{ context: string; sources: MemoryRecallHit[] }> {
-  const hits = await recall(query, topK);
-  if (hits.length === 0) return { context: "", sources: [] };
-  const lines = hits.map((h) => `[${h.type}, importance ${h.importance.toFixed(2)}] ${h.content}`);
-  return { context: lines.join("\n"), sources: hits };
+  const [memHits, kbHits] = await Promise.all([
+    recall(query, topK).catch(() => [] as MemoryRecallHit[]),
+    searchDocs(query, Math.max(2, Math.floor(topK / 2)), 0.08).catch(() => []),
+  ]);
+  const lines: string[] = [];
+  if (memHits.length) {
+    lines.push("Memories:");
+    for (const h of memHits) lines.push(`- [${h.type}, importance ${h.importance.toFixed(2)}] ${h.content}`);
+  }
+  if (kbHits.length) {
+    lines.push("Knowledge:");
+    for (const h of kbHits) lines.push(`- [${h.docTitle}] ${h.content.slice(0, 300)}`);
+  }
+  return { context: lines.join("\n"), sources: memHits };
 }
 
 function clampImportance(v: number): number {
