@@ -137,15 +137,13 @@ Add to `~/.config/opencode/opencode.json`:
 
 ```mermaid
 flowchart LR
-  A["AGENT"] --> B["SKILL"]
-  B --> C["PLAN.md"]
-  C --> D["TASK.md"]
-  D --> E["EXECUTE"]
-  E --> F{"Verify?"}
-  F -- pass --> G["DONE: task_done"]
-  F -- fail --> H["task_block / revise"]
-  H --> E
-  G --> D
+  A[AI Agent] --> B[SKILL.md]
+  B --> C[AGENTS.md]
+  C --> D[PLAN.md]
+  D <--> E[CORTEX_EXECUTE]
+  E <--> F[TASK.md]
+  F <--> G[CORTEX_VERIFY]
+  G --> H[DONE]
 ```
 
 ### Steps
