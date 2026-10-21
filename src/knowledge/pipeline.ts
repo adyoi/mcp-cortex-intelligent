@@ -77,7 +77,6 @@ export async function ingestText(
   title: string,
   opts: IngestFileOptions = {}
 ): Promise<IngestResult> {
-  const db = getDB();
   const ts = nowMs();
   // trim(): whitespace-only content produced a permanent 0-chunk document that
   // could never be searched yet still occupied the content_hash unique index.
@@ -94,6 +93,7 @@ export async function ingestText(
   // Content-hash dedup: identical documents are never re-embedded. `dedupScope`
   // keeps sources that legitimately repeat the same text apart (e.g. "ok" typed
   // in two different sessions).
+  const db = getDB();
   const hash = contentHash(`${opts.dedupScope ? `${opts.dedupScope}\u0000` : ""}${content}`);
   const existing = db
     .prepare("SELECT id, title, chunk_count FROM documents WHERE content_hash = ?")
@@ -130,11 +130,12 @@ export async function ingestText(
     if ((i & 15) === 15) await new Promise<void>((resolve) => setImmediate(resolve));
   }
 
-  // All writes for one document are atomic, and the block below is fully
-  // synchronous, so no other request can interleave inside it.
-  db.exec("BEGIN IMMEDIATE;");
+  // Re-acquire the handle right before writing: the await above can outlive a
+  // connection close or migration; a fresh handle is always safe here.
+  const writeDb = getDB();
+  writeDb.exec("BEGIN IMMEDIATE;");
   try {
-    db.prepare(
+    writeDb.prepare(
       `INSERT INTO documents (id, title, source, content_type, metadata, content_hash, chunk_count, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
@@ -149,7 +150,7 @@ export async function ingestText(
       ts
     );
 
-    const insertChunk = db.prepare(
+    const insertChunk = writeDb.prepare(
       `INSERT INTO chunks (id, doc_id, idx, content, embedding, token_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
     );
     for (let i = 0; i < chunks.length; i++) {
@@ -158,10 +159,10 @@ export async function ingestText(
       const res = insertChunk.run(newId(), docId, chunk.index, chunk.text, packVector(vectors[i]), chunk.tokenCount, ts);
       insertFtsRow(Number(res.lastInsertRowid), chunk.text);
     }
-    db.exec("COMMIT;");
+    writeDb.exec("COMMIT;");
   } catch (e) {
     try {
-      db.exec("ROLLBACK;");
+      writeDb.exec("ROLLBACK;");
     } catch {
       /* transaction already closed */
     }

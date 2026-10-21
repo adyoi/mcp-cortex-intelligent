@@ -47,7 +47,30 @@ export interface FetchResult {
 
 export function isBlockedHost(hostname: string): boolean {
   const h = hostname.replace(/^\[|\]$/g, "");
-  return BLOCKED_HOST_PATTERNS.some((re) => re.test(h));
+  // IPv4-mapped IPv6 (::ffff:a.b.c.d) → check the v4 part.
+  const mapped = h.match(/^::ffff:(.+)$/i);
+  const target = mapped ? mapped[1] : h;
+  // Normalize numeric (decimal/hex/octal) and dotted-quad encodings so
+  // obfuscated loopback/private addresses cannot bypass the guard.
+  let normalized = target;
+  if (/^0x[0-9a-f]+$/i.test(target)) {
+    const n = parseInt(target, 16);
+    if (Number.isFinite(n) && n >= 0 && n <= 0xffffffff) {
+      normalized = `${(n >>> 24) & 255}.${(n >>> 16) & 255}.${(n >>> 8) & 255}.${n & 255}`;
+    }
+  } else if (/^\d+$/.test(target)) {
+    const n = Number(target);
+    if (Number.isFinite(n) && n >= 0 && n <= 0xffffffff) {
+      normalized = `${(n >>> 24) & 255}.${(n >>> 16) & 255}.${(n >>> 8) & 255}.${n & 255}`;
+    }
+  } else if (/^0[0-7]+$/.test(target)) {
+    const n = parseInt(target, 8);
+    if (Number.isFinite(n) && n >= 0 && n <= 0xffffffff) {
+      normalized = `${(n >>> 24) & 255}.${(n >>> 16) & 255}.${(n >>> 8) & 255}.${n & 255}`;
+    }
+  }
+  if (normalized === "0.0.0.0") return true;
+  return BLOCKED_HOST_PATTERNS.some((re) => re.test(normalized));
 }
 
 export function validateUrl(raw: string): { ok: true; url: URL } | { ok: false; error: string } {
@@ -125,7 +148,7 @@ export async function webFetch(rawUrl: string, opts: WebFetchOptions = {}): Prom
     } as FetchResult;
   }
 
-  const cacheKey = v.url.href;
+  const cacheKey = `${v.url.href}|${opts.timeoutMs ?? FETCH_TIMEOUT_MS}|${opts.maxBytes ?? MAX_FETCH_BYTES}|${opts.maxChars ?? DEFAULT_SNIPPET_CHARS}`;
   const cached = fetchCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < FETCH_CACHE_TTL_MS) {
     return cached.result as FetchResult;
@@ -147,7 +170,12 @@ export async function webFetch(rawUrl: string, opts: WebFetchOptions = {}): Prom
         headers: { "user-agent": "mcp-cortex-intelligent/0.1 (+offline MCP server)", accept: "text/html,text/plain,application/json;q=0.9,*/*;q=0.5" },
       });
       if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
-        const next = new URL(res.headers.get("location")!, current);
+        let next: URL;
+        try {
+          next = new URL(res.headers.get("location")!, current);
+        } catch {
+          return { url: rawUrl, finalUrl: current.href, status: res.status, ok: false, contentType: "", title: "", text: "", truncated: false, bytes: 0, elapsedMs: Date.now() - started, error: "Malformed redirect location" } as FetchResult;
+        }
         if (!validateUrl(next.href).ok) {
           return { url: rawUrl, finalUrl: current.href, status: res.status, ok: false, contentType: "", title: "", text: "", truncated: false, bytes: 0, elapsedMs: Date.now() - started, error: `Redirect to a blocked target: ${next.href}` } as FetchResult;
         }

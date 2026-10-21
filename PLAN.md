@@ -774,7 +774,7 @@ Verification: npm test, npm run lint, npm run typecheck. Recommend running befor
 
 ## 25. Pertanyaan Terbuka
 
-1. Apakah 45 tools terlalu banyak? (kandidat pemangkasan: gabung memory_*.)
+1. Apakah 58 tools terlalu banyak? (kandidat pemangkasan: gabung memory_*.)
 2. Apakah tier classification heuristik cukup, atau perlu data historis?
 3. Apakah self-critique perlu kriteria tambahan per bahasa (TS/Python/etc.)?
 4. Apakah verification runner perlu sandbox lebih ketat (container)?

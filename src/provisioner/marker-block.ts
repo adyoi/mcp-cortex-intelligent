@@ -22,7 +22,8 @@ export function provision(filePath: string, autoBlock: string, version: string):
   const re = /<!-- cortex:auto:begin[\s\S]*?<!-- cortex:auto:end -->/;
   if (re.test(content)) {
     const m = content.match(re)!;
-    if (sha256(m[0]) === sha) return { changed: false };
+    const storedSha = m[0].match(/sha=([^\s]+)\s*-->/)?.[1];
+    if (storedSha === sha) return { changed: false };
     content = content.replace(re, block);
   } else {
     content = content.trimEnd() + (content.trim() ? "\n\n" : "") + block + "\n";

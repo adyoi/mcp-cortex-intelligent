@@ -117,8 +117,8 @@ function parseTags(raw: string): string[] {
 }
 
 export async function recall(query: string, topK = 8, minScore = 0.1): Promise<MemoryRecallHit[]> {
-  const db = getDB();
   const q = await embedText(query);
+  const db = getDB();
   const hits = vectorSearch(q, { topK: topK * 2, minScore, collection: "memories" });
   if (hits.length === 0) return [];
 

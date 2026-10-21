@@ -12,7 +12,9 @@ export default Plugin.define({
   id: "cortex-auto",
   async setup(ctx) {
     const root = ctx.location.directory;
-    const cacheFile = root + "/.cortex-data/context-cache.json";
+    const rawDbDir = process.env.CORTEX_DB_DIR || ".cortex-data";
+    const dbDir = /^[a-z]:[\\/]/i.test(rawDbDir) || rawDbDir.startsWith("/") ? rawDbDir : root + "/" + rawDbDir;
+    const cacheFile = dbDir + "/context-cache.json";
     const cli = root + "/dist/cli.js";
     const cliTs = root + "/src/cli.ts";
     const node = process.execPath;

@@ -640,7 +640,7 @@ reg(
 
 reg(
   "bootstrap_session",
-  { description: "Bootstrap a session: detect model, provision agent & skill, record state.", inputSchema: { project_root: z.string().min(1) } },
+  { description: "Bootstrap a session: detect model, provision agent & skill, record state.", inputSchema: { project_root: z.string().min(1).max(MAX_PATH) } },
   async (args: { project_root: string }) => {
     const model = detectModel({ env: process.env, projectRoot: args.project_root });
     const tier = tierOf(model);
@@ -649,7 +649,10 @@ reg(
     provision(skillPath(args.project_root), skillAutoBlock(), SKILL_VERSION);
     pt.initAgentsMd(args.project_root);
     if (process.env.CORTEX_AUTO_CONSOLIDATE === "1") {
-      try { const { consolidate } = await import("../memory/memory.js"); consolidate(); } catch { /* opt-in consolidation must not break bootstrap */ }
+      try {
+        const { consolidate } = await import("../memory/memory.js");
+        await consolidate();
+      } catch { /* opt-in consolidation must not break bootstrap */ }
     }
     return { content: [{ type: "text", text: JSON.stringify({ model, tier, decision: md, provisioned: true }) }] };
   }
@@ -657,7 +660,7 @@ reg(
 
 reg(
   "provision_agent_skill",
-  { description: "Provision or append agent & skill files (idempotent).", inputSchema: { project_root: z.string().min(1), force_version: z.string().optional() } },
+  { description: "Provision or append agent & skill files (idempotent).", inputSchema: { project_root: z.string().min(1).max(MAX_PATH), force_version: z.string().optional() } },
   async (args: { project_root: string; force_version?: string }) => {
     const v = args.force_version ?? AGENT_VERSION;
     const a = provision(agentPath(args.project_root), agentAutoBlock(), v);
@@ -668,7 +671,7 @@ reg(
 
 reg(
   "list_agents_skills",
-  { description: "List agent & skill files and their auto-block versions.", inputSchema: { project_root: z.string().min(1) } },
+  { description: "List agent & skill files and their auto-block versions.", inputSchema: { project_root: z.string().min(1).max(MAX_PATH) } },
   async (args: { project_root: string }) => {
     const { listBlocks } = await import("../provisioner/marker-block.js");
     const a = listBlocks(agentPath(args.project_root));
@@ -679,7 +682,7 @@ reg(
 
 reg(
   "update_procedure_block",
-  { description: "Update the auto block in agent & skill files with a new version.", inputSchema: { project_root: z.string().min(1), version: z.string().min(1) } },
+  { description: "Update the auto block in agent & skill files with a new version.", inputSchema: { project_root: z.string().min(1).max(MAX_PATH), version: z.string().min(1) } },
   async (args: { project_root: string; version: string }) => {
     const a = provision(agentPath(args.project_root), agentAutoBlock(), args.version);
     const s = provision(skillPath(args.project_root), skillAutoBlock(), args.version);
@@ -693,7 +696,7 @@ reg(
 
 reg(
   "detect_model",
-  { description: "Detect the model in use from env/config/arg.", inputSchema: { model: z.string().optional(), project_root: z.string().optional() } },
+  { description: "Detect the model in use from env/config/arg.", inputSchema: { model: z.string().optional(), project_root: z.string().max(MAX_PATH).optional() } },
   async (args: { model?: string; project_root?: string }) => {
     const m = detectModel({ arg: args.model, env: process.env, projectRoot: args.project_root });
     return { content: [{ type: "text", text: JSON.stringify({ model: m, tier: tierOf(m) }) }] };
@@ -719,7 +722,7 @@ reg(
 
 reg(
   "get_guardrails",
-  { description: "Get procedure guardrails (anti-blunder) for a task/model.", inputSchema: { task: z.string().min(1), model: z.string().optional(), project_root: z.string().optional() } },
+  { description: "Get procedure guardrails (anti-blunder) for a task/model.", inputSchema: { task: z.string().min(1), model: z.string().optional(), project_root: z.string().max(MAX_PATH).optional() } },
   async (args: { task: string; model?: string; project_root?: string }) => {
     const m = args.model ?? detectModel({ env: process.env, projectRoot: args.project_root });
     return { content: [{ type: "text", text: getGuardrails(m, args.task) }] };
@@ -728,7 +731,7 @@ reg(
 
 reg(
   "model_decision",
-  { description: "Internal model decision: tier/risk/route/needsVerify.", inputSchema: { model: z.string().optional(), task: z.string().min(1), files: z.array(z.string()).optional(), project_root: z.string().optional() } },
+  { description: "Internal model decision: tier/risk/route/needsVerify.", inputSchema: { model: z.string().optional(), task: z.string().min(1), files: z.array(z.string()).optional(), project_root: z.string().max(MAX_PATH).optional() } },
   async (args: { model?: string; task: string; files?: string[]; project_root?: string }) => {
     const m = args.model ?? detectModel({ env: process.env, projectRoot: args.project_root });
     return { content: [{ type: "text", text: JSON.stringify(modelDecision(m, args.task, args.files ?? [])) }] };
@@ -838,7 +841,7 @@ reg(
 
 reg(
   "cognitive_status",
-  { description: "Cognitive status summary for the current session.", inputSchema: { project_root: z.string().optional() } },
+  { description: "Cognitive status summary for the current session.", inputSchema: { project_root: z.string().max(MAX_PATH).optional() } },
   async (args: { project_root?: string }) => {
     const model = detectModel({ env: process.env, projectRoot: args.project_root });
     const ts = (await import("../plantask/manager.js")).taskSummary();
@@ -850,18 +853,18 @@ reg(
 /* Cortex: Plan & Task Management                                     */
 /* ------------------------------------------------------------------ */
 
-reg("init_plan", { description: "Initialize PLAN.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
+reg("init_plan", { description: "Initialize PLAN.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1).max(MAX_PATH) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.initPlan(args.project_root)) }] }));
 
-reg("read_plan", { description: "Read PLAN.md content.", inputSchema: { project_root: z.string().min(1), full: z.boolean().optional().default(true) } },
+reg("read_plan", { description: "Read PLAN.md content.", inputSchema: { project_root: z.string().min(1).max(MAX_PATH), full: z.boolean().optional().default(true) } },
   async (args: { project_root: string; full?: boolean }) => ({ content: [{ type: "text", text: JSON.stringify(pt.readPlan(args.project_root, args.full ?? true)) }] }));
 
-reg("update_plan_section", { description: "Update a PLAN.md section by heading.", inputSchema: { project_root: z.string().min(1), heading: z.string().min(1), content: z.string() } },
+reg("update_plan_section", { description: "Update a PLAN.md section by heading.", inputSchema: { project_root: z.string().min(1).max(MAX_PATH), heading: z.string().min(1), content: z.string() } },
   async (args: { project_root: string; heading: string; content: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.updatePlanSection(args.project_root, args.heading, args.content)) }] }));
 
-reg("init_task", { description: "Initialize TASK.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
+reg("init_task", { description: "Initialize TASK.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1).max(MAX_PATH) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.initTask(args.project_root)) }] }));
-reg("init_agents_md", { description: "Initialize AGENTS.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1) } },
+reg("init_agents_md", { description: "Initialize AGENTS.md if missing (idempotent).", inputSchema: { project_root: z.string().min(1).max(MAX_PATH) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.initAgentsMd(args.project_root)) }] }));
 
 reg("task_create", { description: "Create a new task.", inputSchema: { title: z.string().min(1), plan_ref: z.string().optional(), priority: z.number().int().optional(), owner: z.string().optional() } },
@@ -893,7 +896,7 @@ reg("task_delete", { description: "Delete a task.", inputSchema: { id: z.string(
 reg("task_update", { description: "Update task title/priority/owner/plan_ref/notes.", inputSchema: { id: z.string().min(1), title: z.string().optional(), priority: z.number().int().optional(), owner: z.string().optional(), plan_ref: z.string().optional(), notes: z.string().optional() } },
   async (args: { id: string; title?: string; priority?: number; owner?: string; plan_ref?: string; notes?: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskUpdate(args.id, { title: args.title, priority: args.priority, owner: args.owner, plan_ref: args.plan_ref, notes: args.notes })) }] }));
 
-reg("task_sync_md", { description: "Sync TASK.md from DB.", inputSchema: { project_root: z.string().min(1) } },
+reg("task_sync_md", { description: "Sync TASK.md from DB.", inputSchema: { project_root: z.string().min(1).max(MAX_PATH) } },
   async (args: { project_root: string }) => ({ content: [{ type: "text", text: JSON.stringify(pt.taskSyncMd(args.project_root)) }] }));
 
 reg("task_summary", { description: "Summary of task statuses.", inputSchema: {} },

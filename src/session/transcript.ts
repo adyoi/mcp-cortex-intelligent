@@ -7,7 +7,7 @@
  *                      (.session-logs/<session>.jsonl).
  *
  * Every user input becomes one small document (title "<session>-<ts>") so it is
- * searchable via rag_search / rag_retrieve — while curated long-term memories
+ * searchable via knowledge_search / knowledge_retrieve — while curated long-term memories
  * stay separate and clean.
  */
 import * as fs from "fs";
