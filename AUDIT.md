@@ -4,12 +4,39 @@
 
 ## Findings
 
-(none yet)
+### Security
+- SSRF guard (`src/system/webfetch.ts:48`) missed decimal/hex/octal IP encodings, IPv4-mapped IPv6 (`::ffff:`), and `0.0.0.0`. **Fixed** (normalized hostnames before pattern check).
+- Redirect `new URL(location)` could throw on malformed Location header. **Fixed** (try/catch → "Malformed redirect location").
+- No secrets stored in DB/memory/docs (verified clean).
+
+### Performance
+- `recall()` and `ingestText()` captured `db` handle before `await embedText()` → stale handle risk. **Fixed** (re-acquire after await).
+- `webfetch` had no response cache → repeated identical fetches. **Fixed** (bounded LRU cache, TTL 60s, key includes opts).
+- Telemetry `telemetry` table had no index on `tool`. **Fixed** (`idx_telemetry_tool` + `tool` column + ALTER migration).
+
+### Dead code / consistency
+- `marker-block.ts` idempotency never matched (hashed whole block vs inner content) → always rewrote. **Fixed** (compare stored `sha=`).
+- `bootstrap_session` called `consolidate()` without `await` → unhandled rejection risk. **Fixed** (`await`).
+- `cortex-auto/index.ts` hardcoded `root/.cortex-data` ignoring `CORTEX_DB_DIR`. **Fixed** (honor env).
+- `transcript.ts` comment referenced removed tools `rag_search`/`rag_retrieve`. **Fixed** → `knowledge_search`/`knowledge_retrieve`.
+- PLAN.md stale "45 tools" → "58" → "59". **Fixed**.
+- `.bak-*` artifacts (5 files) left on disk. **Removed**.
+
+### Docs drift
+- README/docs/PLAN/CHANGELOG tool count synced to 59.
+- Placeholder `D:/path/to/mcp-cortex-intelligent` → `~/mcp-cortex-intelligent`.
+- `/cortex.md` referenced unregistered `init_agents_md` → `init_agents` (+ `init_audit`).
+
+### Hardcoded paths
+- None remaining in tracked code/docs (only `~/mcp-cortex-intelligent` and relative paths).
+
+### Banned words (docs)
+- None (word-boundary scan). Substring "rag" in "storage" is a false positive.
 
 ## Fixed
-
-(none yet)
+All findings above are fixed in commits through `d9411da` + this audit pass. Verification: typecheck ✅, lint ✅, build ✅, `npm test` 259/259 ✅.
 
 ## Remaining / Notes
-
-(none yet)
+- GitHub Pages deployment may still be "in progress" (GitHub infra) — code/docs already pushed.
+- `npm publish` skipped per user instruction (release v1.0.0 created without publish).
+- `init_audit` tool requires OpenCode MCP server restart to load new dist (source + dist verified correct).
