@@ -4,6 +4,36 @@ All notable changes to mcp-cortex-intelligent are documented here.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-21
+
+### Added
+- `init_audit` tool + `/audit` slash command (repo + global): scaffold `AUDIT.md`, explore/check/audit/fix/optimize workflow.
+- `CONTRIBUTING.md` + `SECURITY.md`.
+- Per-module test suites (`src/test/modules/`: embedder, chunker, webfetch, telemetry, guardrails, self-critique) + runner `test-modules.ts`.
+
+### Changed
+- Renamed `init_agents_md` → `init_agents` (tool name + manager export + cli).
+- Tool count 58 → 59; test count 258 → 259.
+- Telemetry `telemetry` table: added `tool` column + `idx_telemetry_tool` index (ALTER migration for pre-release DBs).
+- `webfetch`: bounded in-memory fetch cache (TTL 60s, LRU cap 200), cache key includes opts; SSRF guard hardened (decimal/hex/octal, mapped IPv6, 0.0.0.0); redirect `new URL` guarded.
+- `bootstrap_session`: opt-in `CORTEX_AUTO_CONSOLIDATE=1` triggers memory consolidation.
+- `marker-block` idempotency fixed (compare stored `sha=` instead of whole-block hash).
+- `recall()` / `ingestText()`: re-acquire db handle after `await embedText` (no stale handle).
+- `cortex-auto` plugin honors `CORTEX_DB_DIR`.
+- Docs placeholder `D:/path/to/mcp-cortex-intelligent` → `~/mcp-cortex-intelligent`.
+- README/PLAN/CHANGELOG/docs synced to 59 tools / 259 checks.
+
+### Fixed
+- `bootstrap_session` `consolidate()` now awaited (no unhandled rejection).
+- `PLAN.md` stale "45 tools" → 59.
+- `transcript.ts` comment `rag_search`/`rag_retrieve` → `knowledge_search`/`knowledge_retrieve`.
+- Stale `.bak-*` artifacts removed.
+- `/cortex.md` referenced unregistered `init_agents_md` → `init_agents` (+ `init_audit`).
+
+### Security
+- SSRF guard normalized hostnames (decimal/hex/octal, IPv4-mapped IPv6).
+- No secrets stored; verification runner allowlist + locked cwd + timeout unchanged.
+
 ## [1.0.0] - 2026-10-21
 
 ### Added
