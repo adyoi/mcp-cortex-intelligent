@@ -104,7 +104,7 @@ Add to `~/.config/opencode/opencode.json`:
 | Cognitive | 3 | self_critique, score_compliance, run_verification |
 | Decision | 2 | decision_classify, decision_health |
 | Procedure | 5 | get_procedure, list_procedures, ingest_procedure, retrieve_exemplars, ingest_exemplar |
-| Plan & Task | 15 | init_plan, read_plan, update_plan_section, init_task, init_agents_md, task_create, task_list, task_get, task_start, task_done, task_block, task_delete, task_update, task_sync_md, task_summary |
+| Plan & Task | 16 | init_plan, read_plan, update_plan_section, init_task, init_agents, init_audit, task_create, task_list, task_get, task_start, task_done, task_block, task_delete, task_update, task_sync_md, task_summary |
 | Web | 2 | webfetch, webfetch_validate |
 
 ## Workflow

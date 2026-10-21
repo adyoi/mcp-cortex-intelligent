@@ -7,7 +7,7 @@ All notable changes to mcp-cortex-intelligent are documented here.
 ## [1.0.0] - 2026-10-21
 
 ### Added
-- `task_update` tool (update title/priority/owner/plan_ref/notes) — suite now 58 tools.
+- `task_update` tool (update title/priority/owner/plan_ref/notes) — suite now 59 tools.
 - `/cortex` slash command for full session initialization, plus 12 helper slash commands
   (`/bootstrap`, `/guardrails`, `/critique`, `/verify`, `/tasks`, `/task-new`, `/task-done`,
   `/plan`, `/stats`, `/search`, `/remember`, `/recall`, `/webfetch`).
@@ -27,7 +27,7 @@ All notable changes to mcp-cortex-intelligent are documented here.
 - Cognitive Guardian agent & Cognitive Procedure skill upgraded to v1.1.0 (English).
 - CLI `bootstrap` pre-writes the plugin context cache (fast pre-response injection).
 - Plugin `cortex-auto` is async (non-blocking spawn) and tolerates missing `ctx.storage`.
-- README + docs stats aligned to 58 tools / 258 checks.
+- README + docs stats aligned to 59 tools / 259 checks.
 - `taskRisk` refined (destructive verbs only high-risk when targeting real objects).
 
 ### Fixed
@@ -38,7 +38,7 @@ All notable changes to mcp-cortex-intelligent are documented here.
 - Telemetry `telemetry` table: added `tool` column (`ALTER` migration) + `idx_telemetry_tool`; `recordToolCall` writes tool name; bounded table maintained.
 - `webfetch`: bounded in-memory fetch-cache (TTL 60s, LRU cap 200) + `webfetch_validate` stays SSRF-safe.
 - `bootstrap_session`: opt-in `CORTEX_AUTO_CONSOLIDATE=1` triggers memory consolidation.
-- Test suite split into per-module files (`src/test/modules/`: embedder, chunker, webfetch, telemetry, guardrails, self-critique); master `test-all.ts` preserved (258 checks verified).
+- Test suite split into per-module files (`src/test/modules/`: embedder, chunker, webfetch, telemetry, guardrails, self-critique); master `test-all.ts` preserved (259 checks verified).
 
 ## [0.1.0] - 2026-10-19
 

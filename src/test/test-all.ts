@@ -423,12 +423,12 @@ async function main() {
       "get_procedure", "list_procedures", "ingest_procedure", "retrieve_exemplars", "ingest_exemplar",
       "self_critique", "score_compliance", "run_verification",
       "decision_classify", "decision_health", "cognitive_status",
-      "init_plan", "read_plan", "update_plan_section", "init_task", "init_agents_md", "task_create", "task_list",
+      "init_plan", "read_plan", "update_plan_section", "init_task", "init_agents", "init_audit", "task_create", "task_list",
       "task_get", "task_start", "task_done", "task_block", "task_delete", "task_update", "task_sync_md", "task_summary",
       "webfetch", "webfetch_validate",
     ];
     check("all tools registered", expected.every((t) => toolNames.includes(t)), `missing: ${expected.filter((t) => !toolNames.includes(t))}`);
-    check("exactly 58 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
+    check("exactly 59 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
 
     const sys = await client.callTool({ name: "system_stats", arguments: {} });
     const sysText = toolText(sys);
@@ -543,13 +543,15 @@ async function main() {
     }
     const summ = await ccall("task_summary", {});
     check("task_summary works", summ.includes("total"), summ);
-    // Smoke: webfetch_validate (no network) + task_update + init_agents_md + telemetry.
+    // Smoke: webfetch_validate (no network) + task_update + init_agents + init_audit + telemetry.
     const wv = await ccall("webfetch_validate", { url: "https://example.com" });
     check("webfetch_validate works", wv.includes('"ok":true') || wv.includes('"ok": true'), wv);
     const wvBad = await ccall("webfetch_validate", { url: "http://localhost/" });
     check("webfetch_validate blocks localhost", wvBad.includes('"ok":false') || wvBad.includes('"ok": false'), wvBad);
-    const ia = await ccall("init_agents_md", { project_root: ROOT });
-    check("init_agents_md works", ia.includes("path"), ia);
+    const ia = await ccall("init_agents", { project_root: ROOT });
+    check("init_agents works", ia.includes("path"), ia);
+    const iau = await ccall("init_audit", { project_root: ROOT });
+    check("init_audit works", iau.includes("path"), iau);
     // telemetry exposed via system_stats
     const ss = await ccall("system_stats", {});
     check("system_stats exposes telemetry", ss.includes("telemetry"), ss.slice(0, 80));
