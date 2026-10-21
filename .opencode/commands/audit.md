@@ -1,16 +1,22 @@
 ---
-description: <cortex> Audit the whole project: explore, check, audit, fix, optimize
+description: <cortex> Universal project audit: explore, check, audit, fix, optimize (any language)
 ---
-Run a full project audit for the current workspace:
+Run a full project audit for the current workspace, adapting to the project's language/tooling:
 
 1. Call `bootstrap_session` with project_root = current workspace.
 2. Call `init_audit` for current workspace (creates AUDIT.md if missing).
-3. Explore all files: read src/, docs/, .opencode/, scripts/, .github/.
-4. Run checks: `npm run typecheck`, `npm run lint`, `npm run build`, `npm test`.
-5. Audit for: security (SSRF, path traversal, secrets), performance (N+1, unbounded memory, sync I/O), dead code, unused imports, docs drift, hardcoded paths, banned words.
-6. For each finding: fix it, then record in AUDIT.md under "## Findings" / "## Fixed".
-7. Optimize: cache, index, bounded collections, async I/O where applicable.
-8. Call `task_summary` and report findings + fixes to the user.
-9. Confirm model/tier, provisioned status, and task summary.
+3. Detect project type by checking for: `package.json` (Node/TS), `pyproject.toml`/`requirements.txt` (Python), `Cargo.toml` (Rust), `go.mod` (Go), `pom.xml`/`build.gradle` (Java), `Makefile`, `CMakeLists.txt`. Use the matching toolchain for checks.
+4. Explore all files: read src/, lib/, app/, docs/, .opencode/, scripts/, .github/, tests/.
+5. Run checks appropriate to the detected stack:
+   - Node/TS: `npm run typecheck`, `npm run lint`, `npm run build`, `npm test`
+   - Python: `ruff check`, `mypy`, `pytest`
+   - Rust: `cargo clippy`, `cargo test`
+   - Go: `go vet`, `go test ./...`
+   - Generic: compile/build if a build script exists; run the project's test command.
+6. Audit for (language-agnostic): security (SSRF, path traversal, secrets, injection), performance (N+1, unbounded memory/collections, sync I/O in hot path), dead code, unused imports/exports, docs drift, hardcoded absolute paths, banned words in docs, missing tests.
+7. For each finding: fix it, then record in AUDIT.md under "## Findings" / "## Fixed" with file:line.
+8. Optimize: cache, index, bounded collections, async I/O where applicable.
+9. Call `task_summary` and report findings + fixes + model/tier/provisioned status to the user.
+10. Confirm model/tier, provisioned status, and task summary.
 
-If slash commands are missing, run `npm run setup-clients` then restart OpenCode.
+If slash commands are missing, run `npm run setup-clients` (or the equivalent client setup) then restart OpenCode.
