@@ -4,6 +4,8 @@ All notable changes to mcp-cortex-intelligent are documented here.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-21
+
 ### Added
 - `task_update` tool (update title/priority/owner/plan_ref/notes) — suite now 58 tools.
 - `/cortex` slash command for full session initialization, plus 12 helper slash commands
