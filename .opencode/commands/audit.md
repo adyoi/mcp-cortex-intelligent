@@ -1,7 +1,7 @@
 ---
-description: <cortex> Universal project audit: explore, check, audit, fix, optimize (any language)
+description: <cortex> Comprehensive project audit: clean up, fix issues, optimize, suggest improvements (any language)
 ---
-Run a full project audit for the current workspace, adapting to the project's language/tooling:
+Run a comprehensive audit of the project for the current workspace — clean up, fix issues, optimize, and provide suggestions for improvements. Adapts to the project's language/tooling:
 
 1. Call `bootstrap_session` with project_root = current workspace.
 2. Call `init_audit` for current workspace (creates AUDIT.md if missing).
@@ -14,9 +14,12 @@ Run a full project audit for the current workspace, adapting to the project's la
    - Go: `go vet`, `go test ./...`
    - Generic: compile/build if a build script exists; run the project's test command.
 6. Audit for (language-agnostic): security (SSRF, path traversal, secrets, injection), performance (N+1, unbounded memory/collections, sync I/O in hot path), dead code, unused imports/exports, docs drift, hardcoded absolute paths, banned words in docs, missing tests.
-7. For each finding: fix it, then record in AUDIT.md under "## Findings" / "## Fixed" with file:line.
-8. Optimize: cache, index, bounded collections, async I/O where applicable.
-9. Call `task_summary` and report findings + fixes + model/tier/provisioned status to the user.
-10. Confirm model/tier, provisioned status, and task summary.
+7. Clean up: remove stale/unused files, backups, dead code, redundant imports.
+8. Fix issues: apply minimal, safe fixes for every finding (security, correctness, performance).
+9. Optimize: cache, index, bounded collections, async I/O where applicable.
+10. Provide suggestions for improvements: list remaining opportunities (refactoring, new tests, docs, tooling) with priority (P0/P1/P2) and rationale.
+11. For each finding/fix/suggestion: record in AUDIT.md under "## Findings" / "## Fixed" / "## Suggestions".
+12. Call `task_summary` and report findings + fixes + suggestions + model/tier/provisioned status to the user.
+13. Confirm model/tier, provisioned status, and task summary.
 
 If slash commands are missing, run `npm run setup-clients` (or the equivalent client setup) then restart OpenCode.
