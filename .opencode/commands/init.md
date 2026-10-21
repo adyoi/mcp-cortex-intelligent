@@ -1,7 +1,7 @@
 ---
 description: <cortex> Universal project init: title session, read all files, suggest improvements
 ---
-Initialize and onboard the current project (works for any language/stack):
+Full project onboarding for the current workspace (works for any language/stack). Run once on first open; afterwards use `/cortex` for quick session starts.
 
 1. Call `bootstrap_session` with project_root = current workspace.
 2. Call `init_plan`, `init_task`, `init_agents`, `provision_agent_skill` for current workspace (idempotent scaffolding).
