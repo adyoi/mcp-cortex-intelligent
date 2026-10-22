@@ -6,6 +6,7 @@ interface Cache {
   ts: number;
   block?: string;
   task?: { total?: number; todo?: number; doing?: number; done?: number; blocked?: number };
+  lsp?: { language?: string; ok?: boolean; errors?: number; warnings?: number; top?: Array<{ file: string; line: number; severity: string; message: string }> };
 }
 
 export default Plugin.define({
@@ -75,13 +76,18 @@ export default Plugin.define({
 
     // Fire-and-forget refresh: the next dispatch picks the fresh cache up.
     const refresh = () => {
-      void Promise.all([runCli(["context", "session"]), runCli(["task-summary"])]).then(([block, task]) => {
+      void Promise.all([runCli(["context", "session"]), runCli(["task-summary"]), runCli(["lsp", root])]).then(([block, task, lsp]) => {
         let taskObj: Cache["task"];
         try {
           const parsed = JSON.parse(task) as Cache["task"];
           if (parsed && typeof parsed.total === "number") taskObj = parsed;
         } catch { /* ignore */ }
-        if (block) writeCache({ ts: Date.now(), block, task: taskObj });
+        let lspObj: Cache["lsp"];
+        try {
+          const parsed = JSON.parse(lsp) as Cache["lsp"];
+          if (parsed && typeof parsed.language === "string") lspObj = parsed;
+        } catch { /* ignore */ }
+        if (block) writeCache({ ts: Date.now(), block, task: taskObj, lsp: lspObj });
       });
     };
 
@@ -117,6 +123,14 @@ export default Plugin.define({
         event.system.push({
           type: "text",
           text: `Task status: total=${task.total} todo=${task.todo} doing=${task.doing} done=${task.done} blocked=${task.blocked}. Check task_list before starting new work.`,
+        });
+      }
+      const lsp = cached?.lsp;
+      if (lsp && (lsp.errors || lsp.warnings)) {
+        event.system = event.system || [];
+        event.system.push({
+          type: "text",
+          text: `LSP diagnostics (${lsp.language}): ${lsp.errors ?? 0} errors, ${lsp.warnings ?? 0} warnings.${lsp.top?.length ? " Top: " + lsp.top.map((d: any) => `${d.file}:${d.line} ${d.message}`).join("; ") : ""}`,
         });
       }
     });
