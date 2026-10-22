@@ -28,6 +28,7 @@ version: 1.0.0
 
 2. **Otherwise** (non-OpenCode clients, or browser tools unavailable):
    - Use the MCP `webfetch` tool (SSRF-guarded, timeout, size cap, optional ingest).
+   - If `playwright` or `puppeteer` is installed, use MCP `browser_fetch` (renders JS, returns text + HTML).
    - Note: `webfetch` returns static HTML only — JS-rendered content may be missing.
    - Use `webfetch_validate` first to check URL safety without fetching.
 

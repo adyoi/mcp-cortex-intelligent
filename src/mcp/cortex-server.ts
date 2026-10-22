@@ -206,6 +206,22 @@ reg(
 );
 
 reg(
+  "browser_fetch",
+  { description: "Fetch a URL using a headless browser (JS-rendered, screenshots). Requires optional playwright/puppeteer; falls back to webfetch when unavailable.", inputSchema: { url: z.string().min(1).max(MAX_PATH).describe("Absolute http/https URL."), max_chars: z.number().int().min(200).max(100_000).optional().default(2_000), timeout_ms: z.number().int().min(1_000).max(60_000).optional().default(20_000) } },
+  async (args: { url: string; max_chars?: number; timeout_ms?: number }) => {
+    const { browserFetch } = await import("../system/browser.js");
+    const res = await browserFetch(args.url, { maxChars: args.max_chars ?? 2_000, timeoutMs: args.timeout_ms ?? 20_000 });
+    if (!res.available) {
+      // Fall back to webfetch (static HTML) when no headless browser is installed.
+      const wf = await webFetch(args.url, { maxChars: args.max_chars ?? 2_000, timeoutMs: args.timeout_ms ?? 20_000 });
+      return { content: [{ type: "text", text: JSON.stringify({ fallback: "webfetch", ...wf }, null, 2) }] };
+    }
+    return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
+  }
+);
+
+
+reg(
   "webfetch_validate",
   {
     description: "Validate a URL for webfetch (protocol + SSRF guard) without fetching it.",

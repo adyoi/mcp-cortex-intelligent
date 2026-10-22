@@ -3,7 +3,9 @@
   "version": "1.0.1",
   "description": "Cortex Intelligent MCP server: make ordinary LLMs smarter via offline cognitive augmentation. No API keys.",
   "type": "module",
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "files": [
     "dist/index.js",
     "dist/cli.js",
@@ -24,10 +26,28 @@
     "LICENSE",
     ".env.example"
   ],
-  "repository": { "type": "git", "url": "https://github.com/adyoi/mcp-cortex-intelligent.git" },
-  "bugs": { "url": "https://github.com/adyoi/mcp-cortex-intelligent/issues" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adyoi/mcp-cortex-intelligent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/adyoi/mcp-cortex-intelligent/issues"
+  },
   "homepage": "https://github.com/adyoi/mcp-cortex-intelligent#readme",
-  "keywords": ["mcp","model-context-protocol","offline","cognitive","guardrails","memory","knowledge","agent","skill","opencode","llm","augmentation"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "offline",
+    "cognitive",
+    "guardrails",
+    "memory",
+    "knowledge",
+    "agent",
+    "skill",
+    "opencode",
+    "llm",
+    "augmentation"
+  ],
   "bin": {
     "mcp-cortex-intelligent": "dist/index.js",
     "mcp-cortex-intelligent-cli": "dist/cli.js"
@@ -53,5 +73,9 @@
     "oxlint": "^1.83.0",
     "tsx": "^4.23.0",
     "typescript": "^5.7.0"
+  },
+  "optionalDependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "playwright": "^1.40.0"
   }
 }

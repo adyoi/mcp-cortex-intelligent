@@ -425,10 +425,10 @@ async function main() {
       "decision_classify", "decision_health", "cognitive_status",
       "init_plan", "read_plan", "update_plan_section", "init_task", "init_agents", "init_audit", "task_create", "task_list",
       "task_get", "task_start", "task_done", "task_block", "task_delete", "task_update", "task_sync_md", "task_summary", "task_from_plan",
-      "webfetch", "webfetch_validate",
+      "webfetch", "webfetch_validate", "browser_fetch",
     ];
     check("all tools registered", expected.every((t) => toolNames.includes(t)), `missing: ${expected.filter((t) => !toolNames.includes(t))}`);
-    check("exactly 61 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
+    check("exactly 62 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
 
     const sys = await client.callTool({ name: "system_stats", arguments: {} });
     const sysText = toolText(sys);
