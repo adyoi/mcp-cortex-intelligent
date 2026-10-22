@@ -1,4 +1,4 @@
-<!-- cortex:auto:begin v=1.2.0 sha=7af3b9eea92bb9babfe195238fc98e1273d3a3204847abc38bbc4a33e9229179 -->
+<!-- cortex:auto:begin v=1.3.0 sha=7af3b9eea92bb9babfe195238fc98e1273d3a3204847abc38bbc4a33e9229179 -->
 # Cognitive Procedure (auto)
 
 Standard procedure (scale to model tier):
@@ -15,6 +15,12 @@ Anti-blunder checklist:
 - Do not store secrets.
 - Destructive actions require a backup + rollback plan.
 - High-risk tasks require manual review.
+- Do not leave debug statements (console.log, debugger, TODO, FIXME).
+- Do not edit generated files (dist/, .cortex-data/) directly.
+- Do not assume a tool/flag exists; check the codebase first.
+- For web tasks: use browser tools for JS-rendered content; webfetch for static HTML.
+- For DB/auth changes: always verify integrity + run migrations.
+- Prefer minimal diff; no unrelated refactors in the same commit.
 
 When to use:
 - self_critique before final (returns percent / verdict / severity).
@@ -23,6 +29,7 @@ When to use:
 - get_guardrails before risky actions.
 - task_list / task_create to track work.
 - run_verification before marking done.
+- lsp_diagnostics after any code edit.
 
 Browser accuracy (web-based tasks):
 - Prefer OpenCode browser tools (browser.*) for JS-rendered pages, screenshots, forms.

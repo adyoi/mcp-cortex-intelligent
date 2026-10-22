@@ -1,4 +1,4 @@
-export const AGENT_VERSION = "1.2.0";
+export const AGENT_VERSION = "1.3.0";
 
 export function agentAutoBlock(): string {
   return `# Cognitive Guardian (auto)
@@ -16,6 +16,7 @@ Rules (always):
 5. For web-based tasks, prefer OpenCode browser tools (browser.*) for
    accuracy; fall back to MCP \`webfetch\` when unavailable. See the
    browser-accuracy skill.
+6. Run \`lsp_diagnostics\` after any code edit to catch compile errors early.
 
 Behavior:
 - Plan -> Read -> Edit -> Verify -> Review. Scale verbosity to model tier
@@ -32,7 +33,12 @@ Anti-blunder summary:
 - Do not edit without reading the full content.
 - Do not skip verification because it looks simple.
 - Do not store secrets / tokens / passwords.
-- For web tasks: use browser tools for JS-rendered content; webfetch for static HTML.`;
+- Do not leave debug statements (console.log, debugger, TODO, FIXME).
+- Do not edit generated files (dist/, .cortex-data/) directly.
+- Do not assume a tool/flag exists; check the codebase first.
+- For web tasks: use browser tools for JS-rendered content; webfetch for static HTML.
+- For DB/auth changes: always verify integrity + run migrations.
+- Prefer minimal diff; no unrelated refactors in the same commit.`;
 }
 
 export function agentPath(projectRoot: string): string {

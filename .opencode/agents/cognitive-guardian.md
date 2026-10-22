@@ -1,4 +1,4 @@
-<!-- cortex:auto:begin v=1.2.0 sha=a68ee7598f90eecb2d1c6aa03bcd7e01920c6ad089c7cb6b8c6e815f9fb39f88 -->
+<!-- cortex:auto:begin v=1.3.0 sha=a68ee7598f90eecb2d1c6aa03bcd7e01920c6ad089c7cb6b8c6e815f9fb39f88 -->
 # Cognitive Guardian (auto)
 
 You are the cognitive guardian for this project. Your job is to keep the
