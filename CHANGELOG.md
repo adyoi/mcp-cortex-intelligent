@@ -13,7 +13,6 @@ All notable changes to mcp-cortex-intelligent are documented here.
 
 ### Changed
 - Renamed `init_agents_md` → `init_agents` (tool name + manager export + cli).
-- Tool count 58 → 59; test count 258 → 259.
 - Telemetry `telemetry` table: added `tool` column + `idx_telemetry_tool` index (ALTER migration for pre-release DBs).
 - `webfetch`: bounded in-memory fetch cache (TTL 60s, LRU cap 200), cache key includes opts; SSRF guard hardened (decimal/hex/octal, mapped IPv6, 0.0.0.0); redirect `new URL` guarded.
 - `bootstrap_session`: opt-in `CORTEX_AUTO_CONSOLIDATE=1` triggers memory consolidation.
@@ -54,7 +53,7 @@ All notable changes to mcp-cortex-intelligent are documented here.
 - `get_guardrails`, `model_decision`, `cognitive_status` accept `project_root` for accurate model detection (now reads `opencode.json` + `opencode.jsonc`).
 - Guardrails output is risk/route/tier-adaptive (English).
 - `self_critique` upgraded: weighted checklist, percent 0-100, severity, verdict, structured checks.
-- Cognitive Guardian agent & Cognitive Procedure skill upgraded to v1.1.0 (English).
+- Cognitive Guardian agent & Cognitive Procedure skill upgraded to v1.2.0 (English, browser-accuracy integration).
 - CLI `bootstrap` pre-writes the plugin context cache (fast pre-response injection).
 - Plugin `cortex-auto` is async (non-blocking spawn) and tolerates missing `ctx.storage`.
 - README + docs stats aligned to 61 tools / 259 checks.
@@ -63,7 +62,7 @@ All notable changes to mcp-cortex-intelligent are documented here.
 ### Fixed
 - Model detection now reads `opencode.jsonc` (OpenCode's actual config) in addition to `opencode.json`.
 - `webfetch` ingest dedups by URL (no duplicate docs).
-- `CONTRIBUTING.md` + `SECURITY.md` added; docs placeholder `D:/path/to` → `~/mcp-cortex-intelligent`; `/cortex.md` now references both `init_agents_md` and `provision_agent_skill`.
+- `CONTRIBUTING.md` + `SECURITY.md` added; docs placeholder `D:/path/to` → `~/mcp-cortex-intelligent`; `/cortex.md` now references both `init_agents` and `provision_agent_skill`.
 - Plugin no longer crashes when `ctx.storage` is unavailable.
 - Telemetry `telemetry` table: added `tool` column (`ALTER` migration) + `idx_telemetry_tool`; `recordToolCall` writes tool name; bounded table maintained.
 - `webfetch`: bounded in-memory fetch-cache (TTL 60s, LRU cap 200) + `webfetch_validate` stays SSRF-safe.
