@@ -153,8 +153,6 @@ reg(
     return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
   }
 );
-
-
 /* ------------------------------------------------------------------ */
 /* Web                                                                 */
 /* ------------------------------------------------------------------ */
@@ -916,6 +914,16 @@ reg("task_sync_md", { description: "Sync TASK.md from DB.", inputSchema: { proje
 
 reg("task_summary", { description: "Summary of task statuses.", inputSchema: {} },
   async () => ({ content: [{ type: "text", text: JSON.stringify(pt.taskSummary()) }] }));
+
+reg(
+  "task_from_plan",
+  { description: "Auto-generate tasks from PLAN.md step/bullet lines.", inputSchema: { project_root: z.string().min(1).max(MAX_PATH) } },
+  async (args: { project_root: string }) => {
+    const r = pt.taskFromPlan(args.project_root);
+    return { content: [{ type: "text", text: JSON.stringify(r) }] };
+  }
+);
+
 
 /* ------------------------------------------------------------------ */
 

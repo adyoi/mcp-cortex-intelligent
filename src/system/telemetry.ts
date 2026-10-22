@@ -27,7 +27,7 @@ export function telemetryStats(): {
   avgMs: number;
   top: Array<{ tool: string; calls: number }>;
 } {
-  const rows = getDB().prepare("SELECT payload FROM telemetry WHERE event='tool_call'").all() as Array<{ payload: string }>;
+  const rows = getDB().prepare("SELECT payload, tool FROM telemetry WHERE event='tool_call'").all() as Array<{ payload: string; tool: string | null }>;
   let ok = 0;
   let failed = 0;
   let totalMs = 0;
@@ -38,12 +38,22 @@ export function telemetryStats(): {
       if (p.ok === false) failed++;
       else ok++;
       totalMs += Number(p.ms) || 0;
-      if (p.tool) byTool.set(p.tool, (byTool.get(p.tool) ?? 0) + 1);
+      const t = r.tool ?? p.tool;
+      if (t) byTool.set(t, (byTool.get(t) ?? 0) + 1);
     } catch { /* skip malformed row */ }
   }
-  const top = [...byTool.entries()]
-    .map(([tool, calls]) => ({ tool, calls }))
-    .sort((a, b) => b.calls - a.calls || a.tool.localeCompare(b.tool))
-    .slice(0, 10);
+  // Prefer SQL aggregation over the in-memory map when the tool column is populated,
+  // so the index (idx_telemetry_tool) is actually used for large stores.
+  let top: Array<{ tool: string; calls: number }>;
+  try {
+    const agg = getDB().prepare("SELECT tool, COUNT(*) AS c FROM telemetry WHERE tool IS NOT NULL GROUP BY tool ORDER BY c DESC, tool ASC LIMIT 10").all() as Array<{ tool: string; c: number }>;
+    if (agg.length > 0) {
+      top = agg.map((r) => ({ tool: r.tool, calls: r.c }));
+    } else {
+      top = [...byTool.entries()].map(([tool, calls]) => ({ tool, calls })).sort((a, b) => b.calls - a.calls || a.tool.localeCompare(b.tool)).slice(0, 10);
+    }
+  } catch {
+    top = [...byTool.entries()].map(([tool, calls]) => ({ tool, calls })).sort((a, b) => b.calls - a.calls || a.tool.localeCompare(b.tool)).slice(0, 10);
+  }
   return { total: rows.length, ok, failed, avgMs: rows.length ? Math.round(totalMs / rows.length) : 0, top };
 }

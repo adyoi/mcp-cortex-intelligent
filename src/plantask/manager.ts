@@ -193,3 +193,25 @@ export function taskSyncMd(projectRoot: string): { path: string } {
   provision(p, autoBlock, "task-sync");
   return { path: p };
 }
+
+
+export function taskFromPlan(projectRoot: string): { created: number; ids: string[] } {
+  const planPath = path.join(projectRoot, "PLAN.md");
+  if (!fs.existsSync(planPath)) return { created: 0, ids: [] };
+  const lines = fs.readFileSync(planPath, "utf8").split(/\r?\n/);
+  // Collect bullet/numbered lines under a "Steps"/"Tasks"/"Plan" heading.
+  const ids: string[] = [];
+  let inSection = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (/^#{1,6}\s/.test(line)) { inSection = /step|task|plan|todo/i.test(line); continue; }
+    if (!inSection) continue;
+    const m = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
+    if (!m) continue;
+    const title = m[1].trim();
+    if (title.length < 3) continue;
+    const r = taskCreate(title, "PLAN.md");
+    ids.push(r.id);
+  }
+  return { created: ids.length, ids };
+}

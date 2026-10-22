@@ -235,6 +235,23 @@ export async function webFetch(rawUrl: string, opts: WebFetchOptions = {}): Prom
   }
 
   const isHtml = /text\/html/i.test(contentType) || /^\s*<(!doctype|html)/i.test(raw);
+  const isBinary = /^(image|audio|video|application\/(pdf|zip|octet-stream|gz|x-tar|x-7z))/i.test(contentType) && !/text/i.test(contentType);
+  if (isBinary) {
+    const result: FetchResult = {
+      url: rawUrl,
+      finalUrl: current.href,
+      status: response.status,
+      ok: response.ok,
+      contentType,
+      title: "",
+      text: `[binary content: ${contentType}, ${bytes} bytes — not decoded]`,
+      truncated: false,
+      bytes,
+      elapsedMs: Date.now() - started,
+    };
+    fetchCache.set(cacheKey, { result, ts: Date.now() });
+    return result;
+  }
   const { title, text } = isHtml ? htmlToText(raw) : { title: "", text: raw.trim() };
   const clipped = text.length > maxChars ? text.slice(0, maxChars) : text;
 
