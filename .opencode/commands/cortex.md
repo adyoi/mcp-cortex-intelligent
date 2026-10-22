@@ -1,7 +1,7 @@
 ---
-description: <cortex> Quick session init (bootstrap, guardrails) for any project — use after /init
+description: <cortex> Quick session start (bootstrap, sync, guardrails) — use after /init
 ---
-Run the quick Cortex session initialization for the current workspace (works for any language/stack). Assumes `/init` has already been run once (scaffolding exists).
+Run the quick Cortex session start for the current workspace (works for any language/stack). Assumes `/init` has already been run once (scaffolding exists).
 
 1. Call `bootstrap_session` with project_root = current workspace.
 2. Call `knowledge_sync_session` with directory = current workspace (syncs the most recent session transcript — user inputs + responses — into the knowledge store so prior Q&A is searchable). Best-effort; skip if no session exists.
