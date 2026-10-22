@@ -136,7 +136,7 @@ footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);col
   </section>
 
   <div class="stats">
-    <div class="stat"><b>59</b><span>MCP Tools</span></div>
+    <div class="stat"><b>60</b><span>MCP Tools</span></div>
     <div class="stat"><b>259</b><span>Tests Passing</span></div>
     <div class="stat"><b>0</b><span>API Keys</span></div>
     <div class="stat"><b>100%</b><span>Offline</span></div>
@@ -202,69 +202,70 @@ npm start</div>
   </section>
 
   <section id="tools">
-    <h2>Tools (58)</h2>
+    <h2>Tools (60)</h2>
     <div class="tools">
     <table>
       <tr><th>#</th><th>Tool</th><th>Purpose</th></tr>
       <tr><td>1</td><td>system_stats</td><td>DB, embedding, counts, verifier status</td></tr>
-      <tr><td>2</td><td>cognitive_status</td><td>Session summary: model, tier, calls, scores, verification, decision</td></tr>
-      <tr><td>3</td><td>bootstrap_session</td><td>Detect root, provision agent+skill, record session state</td></tr>
-      <tr><td>4</td><td>provision_agent_skill</td><td>Provision or append (idempotent, force version)</td></tr>
-      <tr><td>5</td><td>list_agents_skills</td><td>Inventory agent/skill files + auto-block versions</td></tr>
-      <tr><td>6</td><td>update_procedure_block</td><td>Update auto block with new version</td></tr>
-      <tr><td>7</td><td>detect_model</td><td>Detect model from env/config/arg</td></tr>
-      <tr><td>8</td><td>get_model_profile</td><td>Profile & tier of a model</td></tr>
-      <tr><td>9</td><td>set_model</td><td>Override model for session</td></tr>
-      <tr><td>10</td><td>get_guardrails</td><td>Procedure + anti-blunder + verification (injectable)</td></tr>
-      <tr><td>11</td><td>model_decision</td><td>Internal tier/risk/route/needsVerify decision</td></tr>
-      <tr><td>12</td><td>knowledge_ingest_text</td><td>Ingest text</td></tr>
-      <tr><td>13</td><td>knowledge_ingest_file</td><td>Ingest file</td></tr>
-      <tr><td>14</td><td>knowledge_ingest_dir</td><td>Ingest directory</td></tr>
-      <tr><td>15</td><td>knowledge_search</td><td>Hybrid search (BM25 + vector + RRF)</td></tr>
-      <tr><td>16</td><td>knowledge_retrieve</td><td>Ready-to-inject context block + token count</td></tr>
-      <tr><td>17</td><td>knowledge_list_documents</td><td>List documents (paginated)</td></tr>
-      <tr><td>18</td><td>knowledge_document_stats</td><td>Document storage statistics</td></tr>
-      <tr><td>19</td><td>knowledge_delete_document</td><td>Delete document + chunks + FTS</td></tr>
-      <tr><td>20</td><td>knowledge_sync_session</td><td>Ingest OpenCode session inputs</td></tr>
-      <tr><td>21</td><td>knowledge_reindex</td><td>Re-embed all vectors in place</td></tr>
-      <tr><td>22</td><td>knowledge_backup</td><td>Consistent SQLite snapshot (VACUUM INTO)</td></tr>
-      <tr><td>23</td><td>memory_remember</td><td>Save long-term memory</td></tr>
-      <tr><td>24</td><td>memory_recall</td><td>Semantic memory search (decay + recall count)</td></tr>
-      <tr><td>25</td><td>memory_context</td><td>Compact context block from memories</td></tr>
-      <tr><td>26</td><td>memory_list</td><td>List memories (filter type/tag/importance)</td></tr>
-      <tr><td>27</td><td>memory_get</td><td>Get memory by id</td></tr>
-      <tr><td>28</td><td>memory_update</td><td>Update memory content/type/importance/tags</td></tr>
-      <tr><td>29</td><td>memory_forget</td><td>Delete memory</td></tr>
-      <tr><td>30</td><td>memory_consolidate</td><td>Dedupe + promote hot memories</td></tr>
-      <tr><td>31</td><td>memory_stats</td><td>Counts, tokens, importance, by type</td></tr>
-      <tr><td>32</td><td>self_critique</td><td>Checklist + scoring + issues (no LLM)</td></tr>
-      <tr><td>33</td><td>score_compliance</td><td>Check completeness of required steps</td></tr>
-      <tr><td>34</td><td>run_verification</td><td>Run allowlisted test/lint/typecheck</td></tr>
-      <tr><td>35</td><td>decision_classify</td><td>Internal decision (tier/risk/route/compliance)</td></tr>
-      <tr><td>36</td><td>decision_health</td><td>Health of internal decision engine</td></tr>
-      <tr><td>37</td><td>get_procedure</td><td>Get procedure by name</td></tr>
-      <tr><td>38</td><td>list_procedures</td><td>List all procedures</td></tr>
-      <tr><td>39</td><td>ingest_procedure</td><td>Store a new procedure</td></tr>
-      <tr><td>40</td><td>retrieve_exemplars</td><td>Retrieve best exemplars for a task</td></tr>
-      <tr><td>41</td><td>ingest_exemplar</td><td>Store a high-quality exemplar</td></tr>
-      <tr><td>42</td><td>init_plan</td><td>Initialize PLAN.md if missing (idempotent)</td></tr>
-      <tr><td>43</td><td>read_plan</td><td>Read PLAN.md content</td></tr>
-      <tr><td>44</td><td>update_plan_section</td><td>Update a PLAN.md section by heading</td></tr>
-      <tr><td>45</td><td>init_task</td><td>Initialize TASK.md if missing (idempotent)</td></tr>
-      <tr><td>46</td><td>task_create</td><td>Create a new task</td></tr>
-      <tr><td>47</td><td>task_list</td><td>List tasks (filter status/priority)</td></tr>
-      <tr><td>48</td><td>task_get</td><td>Get task by id</td></tr>
-      <tr><td>49</td><td>task_start</td><td>Set task status to doing</td></tr>
-      <tr><td>50</td><td>task_done</td><td>Set task status to done</td></tr>
-      <tr><td>51</td><td>task_block</td><td>Set task status to blocked + reason</td></tr>
-      <tr><td>52</td><td>task_delete</td><td>Delete a task</td></tr>
-      <tr><td>53</td><td>task_update</td><td>Update task title/priority/owner/plan_ref/notes</td></tr>
-      <tr><td>54</td><td>task_sync_md</td><td>Write TASK.md from DB</td></tr>
-      <tr><td>55</td><td>task_summary</td><td>Summary of task statuses</td></tr>
-      <tr><td>56</td><td>webfetch</td><td>Fetch URL (with SSRF guard, timeout, ingest option)</td></tr>
-      <tr><td>57</td><td>webfetch_validate</td><td>Validate URL for webfetch (no fetch)</td></tr>
-      <tr><td>58</td><td>init_agents</td><td>Initialize AGENTS.md if missing (idempotent)</td></tr>
-<tr><td>59</td><td>init_audit</td><td>Initialize AUDIT.md if missing (idempotent)</td></tr>
+      <tr><td>2</td><td>lsp_diagnostics</td><td>Run language-server-style diagnostics (tsc/pyright/cargo/go vet)</td></tr>
+      <tr><td>3</td><td>cognitive_status</td><td>Session summary: model, tier, calls, scores, verification, decision</td></tr>
+      <tr><td>4</td><td>bootstrap_session</td><td>Detect root, provision agent+skill, record session state</td></tr>
+      <tr><td>5</td><td>provision_agent_skill</td><td>Provision or append (idempotent, force version)</td></tr>
+      <tr><td>6</td><td>list_agents_skills</td><td>Inventory agent/skill files + auto-block versions</td></tr>
+      <tr><td>7</td><td>update_procedure_block</td><td>Update auto block with new version</td></tr>
+      <tr><td>8</td><td>detect_model</td><td>Detect model from env/config/arg</td></tr>
+      <tr><td>9</td><td>get_model_profile</td><td>Profile & tier of a model</td></tr>
+      <tr><td>10</td><td>set_model</td><td>Override model for session</td></tr>
+      <tr><td>11</td><td>get_guardrails</td><td>Procedure + anti-blunder + verification (injectable)</td></tr>
+      <tr><td>12</td><td>model_decision</td><td>Internal tier/risk/route/needsVerify decision</td></tr>
+      <tr><td>13</td><td>knowledge_ingest_text</td><td>Ingest text</td></tr>
+      <tr><td>14</td><td>knowledge_ingest_file</td><td>Ingest file</td></tr>
+      <tr><td>15</td><td>knowledge_ingest_dir</td><td>Ingest directory</td></tr>
+      <tr><td>16</td><td>knowledge_search</td><td>Hybrid search (BM25 + vector + RRF)</td></tr>
+      <tr><td>17</td><td>knowledge_retrieve</td><td>Ready-to-inject context block + token count</td></tr>
+      <tr><td>18</td><td>knowledge_list_documents</td><td>List documents (paginated)</td></tr>
+      <tr><td>19</td><td>knowledge_document_stats</td><td>Document storage statistics</td></tr>
+      <tr><td>20</td><td>knowledge_delete_document</td><td>Delete document + chunks + FTS</td></tr>
+      <tr><td>21</td><td>knowledge_sync_session</td><td>Ingest OpenCode session inputs</td></tr>
+      <tr><td>22</td><td>knowledge_reindex</td><td>Re-embed all vectors in place</td></tr>
+      <tr><td>23</td><td>knowledge_backup</td><td>Consistent SQLite snapshot (VACUUM INTO)</td></tr>
+      <tr><td>24</td><td>memory_remember</td><td>Save long-term memory</td></tr>
+      <tr><td>25</td><td>memory_recall</td><td>Semantic memory search (decay + recall count)</td></tr>
+      <tr><td>26</td><td>memory_context</td><td>Compact context block from memories</td></tr>
+      <tr><td>27</td><td>memory_list</td><td>List memories (filter type/tag/importance)</td></tr>
+      <tr><td>28</td><td>memory_get</td><td>Get memory by id</td></tr>
+      <tr><td>29</td><td>memory_update</td><td>Update memory content/type/importance/tags</td></tr>
+      <tr><td>30</td><td>memory_forget</td><td>Delete memory</td></tr>
+      <tr><td>31</td><td>memory_consolidate</td><td>Dedupe + promote hot memories</td></tr>
+      <tr><td>32</td><td>memory_stats</td><td>Counts, tokens, importance, by type</td></tr>
+      <tr><td>33</td><td>self_critique</td><td>Checklist + scoring + issues (no LLM)</td></tr>
+      <tr><td>34</td><td>score_compliance</td><td>Check completeness of required steps</td></tr>
+      <tr><td>35</td><td>run_verification</td><td>Run allowlisted test/lint/typecheck</td></tr>
+      <tr><td>36</td><td>decision_classify</td><td>Internal decision (tier/risk/route/compliance)</td></tr>
+      <tr><td>37</td><td>decision_health</td><td>Health of internal decision engine</td></tr>
+      <tr><td>38</td><td>get_procedure</td><td>Get procedure by name</td></tr>
+      <tr><td>39</td><td>list_procedures</td><td>List all procedures</td></tr>
+      <tr><td>40</td><td>ingest_procedure</td><td>Store a new procedure</td></tr>
+      <tr><td>41</td><td>retrieve_exemplars</td><td>Retrieve best exemplars for a task</td></tr>
+      <tr><td>42</td><td>ingest_exemplar</td><td>Store a high-quality exemplar</td></tr>
+      <tr><td>43</td><td>init_plan</td><td>Initialize PLAN.md if missing (idempotent)</td></tr>
+      <tr><td>44</td><td>read_plan</td><td>Read PLAN.md content</td></tr>
+      <tr><td>45</td><td>update_plan_section</td><td>Update a PLAN.md section by heading</td></tr>
+      <tr><td>46</td><td>init_task</td><td>Initialize TASK.md if missing (idempotent)</td></tr>
+      <tr><td>47</td><td>init_agents</td><td>Initialize AGENTS.md if missing (idempotent)</td></tr>
+      <tr><td>48</td><td>init_audit</td><td>Initialize AUDIT.md if missing (idempotent)</td></tr>
+      <tr><td>49</td><td>task_create</td><td>Create a new task</td></tr>
+      <tr><td>50</td><td>task_list</td><td>List tasks (filter status/priority)</td></tr>
+      <tr><td>51</td><td>task_get</td><td>Get task by id</td></tr>
+      <tr><td>52</td><td>task_start</td><td>Set task status to doing</td></tr>
+      <tr><td>53</td><td>task_done</td><td>Set task status to done</td></tr>
+      <tr><td>54</td><td>task_block</td><td>Set task status to blocked + reason</td></tr>
+      <tr><td>55</td><td>task_delete</td><td>Delete a task</td></tr>
+      <tr><td>56</td><td>task_update</td><td>Update task title/priority/owner/plan_ref/notes</td></tr>
+      <tr><td>57</td><td>task_sync_md</td><td>Write TASK.md from DB</td></tr>
+      <tr><td>58</td><td>task_summary</td><td>Summary of task statuses</td></tr>
+      <tr><td>59</td><td>webfetch</td><td>Fetch URL (with SSRF guard, timeout, ingest option)</td></tr>
+      <tr><td>60</td><td>webfetch_validate</td><td>Validate URL for webfetch (no fetch)</td></tr>
     </table>
     </div>
   </section>

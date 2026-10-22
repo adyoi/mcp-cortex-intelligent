@@ -412,7 +412,7 @@ async function main() {
     const tools = await client.listTools();
     const toolNames = tools.tools.map((t) => t.name);
     const expected = [
-      "system_stats", "knowledge_ingest_text", "knowledge_ingest_file", "knowledge_ingest_dir",
+      "system_stats", "lsp_diagnostics", "knowledge_ingest_text", "knowledge_ingest_file", "knowledge_ingest_dir",
       "knowledge_search", "knowledge_retrieve", "knowledge_list_documents", "knowledge_document_stats",
       "knowledge_delete_document", "memory_remember", "memory_recall", "memory_list",
       "memory_get", "memory_update", "memory_forget", "memory_consolidate",
@@ -428,7 +428,7 @@ async function main() {
       "webfetch", "webfetch_validate",
     ];
     check("all tools registered", expected.every((t) => toolNames.includes(t)), `missing: ${expected.filter((t) => !toolNames.includes(t))}`);
-    check("exactly 59 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
+    check("exactly 60 tools", toolNames.length === expected.length, `got ${toolNames.length}`);
 
     const sys = await client.callTool({ name: "system_stats", arguments: {} });
     const sysText = toolText(sys);

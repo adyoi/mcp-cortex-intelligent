@@ -13,13 +13,14 @@ Run a comprehensive audit of the project for the current workspace — clean up,
    - Rust: `cargo clippy`, `cargo test`
    - Go: `go vet`, `go test ./...`
    - Generic: compile/build if a build script exists; run the project's test command.
-6. Audit for (language-agnostic): security (SSRF, path traversal, secrets, injection), performance (N+1, unbounded memory/collections, sync I/O in hot path), dead code, unused imports/exports, docs drift, hardcoded absolute paths, banned words in docs, missing tests.
-7. Clean up: remove stale/unused files, backups, dead code, redundant imports.
-8. Fix issues: apply minimal, safe fixes for every finding (security, correctness, performance).
-9. Optimize: cache, index, bounded collections, async I/O where applicable.
-10. Provide suggestions for improvements: list remaining opportunities (refactoring, new tests, docs, tooling) with priority (P0/P1/P2) and rationale.
-11. For each finding/fix/suggestion: record in AUDIT.md under "## Findings" / "## Fixed" / "## Suggestions".
-12. Call `task_summary` and report findings + fixes + suggestions + model/tier/provisioned status to the user.
-13. Confirm model/tier, provisioned status, and task summary.
+6. Run `lsp_diagnostics` (project_root = current workspace) for language-server-style diagnostics (tsc/pyright/cargo check/go vet) — structured, location-aware issues.
+7. Audit for (language-agnostic): security (SSRF, path traversal, secrets, injection), performance (N+1, unbounded memory/collections, sync I/O in hot path), dead code, unused imports/exports, docs drift, hardcoded absolute paths, banned words in docs, missing tests.
+8. Clean up: remove stale/unused files, backups, dead code, redundant imports.
+9. Fix issues: apply minimal, safe fixes for every finding (security, correctness, performance).
+10. Optimize: cache, index, bounded collections, async I/O where applicable.
+11. Provide suggestions for improvements: list remaining opportunities (refactoring, new tests, docs, tooling) with priority (P0/P1/P2) and rationale.
+12. For each finding/fix/suggestion: record in AUDIT.md under "## Findings" / "## Fixed" / "## Suggestions".
+13. Call `task_summary` and report findings + fixes + suggestions + model/tier/provisioned status to the user.
+14. Confirm model/tier, provisioned status, and task summary.
 
 If slash commands are missing, run `npm run setup-clients` (or the equivalent client setup) then restart OpenCode.

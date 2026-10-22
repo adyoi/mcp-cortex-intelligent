@@ -143,6 +143,18 @@ reg(
   }
 );
 
+reg(
+  "lsp_diagnostics",
+  { description: "Run language-server-style diagnostics (tsc/pyright/cargo check/go vet) and return structured, location-aware issues.", inputSchema: { project_root: z.string().min(1).max(MAX_PATH).optional() } },
+  async (args: { project_root?: string }) => {
+    const { runLspDiagnostics } = await import("../system/lsp.js");
+    const root = args.project_root ?? process.cwd();
+    const res = runLspDiagnostics(root);
+    return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
+  }
+);
+
+
 /* ------------------------------------------------------------------ */
 /* Web                                                                 */
 /* ------------------------------------------------------------------ */

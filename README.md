@@ -92,11 +92,11 @@ Add to `~/.config/opencode/opencode.json`:
 }
 ```
 
-## Tools (58)
+## Tools (60)
 
 | Group | Count | Tools |
 |---|---|---|
-| System | 2 | system_stats, cognitive_status |
+| System | 3 | system_stats, lsp_diagnostics, cognitive_status |
 | Provisioning | 4 | bootstrap_session, provision_agent_skill, list_agents_skills, update_procedure_block |
 | Model | 5 | detect_model, get_model_profile, set_model, get_guardrails, model_decision |
 | Knowledge | 11 | knowledge_ingest_text, knowledge_ingest_file, knowledge_ingest_dir, knowledge_search, knowledge_retrieve, knowledge_list_documents, knowledge_document_stats, knowledge_delete_document, knowledge_sync_session, knowledge_reindex, knowledge_backup |

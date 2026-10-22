@@ -21,7 +21,7 @@ All notable changes to mcp-cortex-intelligent are documented here.
 - `recall()` / `ingestText()`: re-acquire db handle after `await embedText` (no stale handle).
 - `cortex-auto` plugin honors `CORTEX_DB_DIR`.
 - Docs placeholder `D:/path/to/mcp-cortex-intelligent` → `~/mcp-cortex-intelligent`.
-- README/PLAN/CHANGELOG/docs synced to 59 tools / 259 checks.
+- README/PLAN/CHANGELOG/docs synced to 60 tools / 259 checks.
 
 ### Fixed
 - `bootstrap_session` `consolidate()` now awaited (no unhandled rejection).
@@ -37,7 +37,7 @@ All notable changes to mcp-cortex-intelligent are documented here.
 ## [1.0.0] - 2026-10-21
 
 ### Added
-- `task_update` tool (update title/priority/owner/plan_ref/notes) — suite now 59 tools.
+- `task_update` tool (update title/priority/owner/plan_ref/notes) — suite now 60 tools.
 - `/cortex` slash command for full session initialization, plus 12 helper slash commands
   (`/bootstrap`, `/guardrails`, `/critique`, `/verify`, `/tasks`, `/task-new`, `/task-done`,
   `/plan`, `/stats`, `/search`, `/remember`, `/recall`, `/webfetch`).
@@ -57,7 +57,7 @@ All notable changes to mcp-cortex-intelligent are documented here.
 - Cognitive Guardian agent & Cognitive Procedure skill upgraded to v1.1.0 (English).
 - CLI `bootstrap` pre-writes the plugin context cache (fast pre-response injection).
 - Plugin `cortex-auto` is async (non-blocking spawn) and tolerates missing `ctx.storage`.
-- README + docs stats aligned to 59 tools / 259 checks.
+- README + docs stats aligned to 60 tools / 259 checks.
 - `taskRisk` refined (destructive verbs only high-risk when targeting real objects).
 
 ### Fixed
