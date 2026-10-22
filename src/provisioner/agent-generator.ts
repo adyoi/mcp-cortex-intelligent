@@ -1,4 +1,4 @@
-export const AGENT_VERSION = "1.1.0";
+export const AGENT_VERSION = "1.2.0";
 
 export function agentAutoBlock(): string {
   return `# Cognitive Guardian (auto)
@@ -13,6 +13,9 @@ Rules (always):
 2. Follow the procedure in the cognitive-procedure skill.
 3. Before finalizing, call \`self_critique\` and \`run_verification\`.
 4. Never store secrets in memory or in committed files.
+5. For web-based tasks, prefer OpenCode browser tools (browser.*) for
+   accuracy; fall back to MCP \`webfetch\` when unavailable. See the
+   browser-accuracy skill.
 
 Behavior:
 - Plan -> Read -> Edit -> Verify -> Review. Scale verbosity to model tier
@@ -28,7 +31,8 @@ Anti-blunder summary:
 - Do not assume a path exists; read first.
 - Do not edit without reading the full content.
 - Do not skip verification because it looks simple.
-- Do not store secrets / tokens / passwords.`;
+- Do not store secrets / tokens / passwords.
+- For web tasks: use browser tools for JS-rendered content; webfetch for static HTML.`;
 }
 
 export function agentPath(projectRoot: string): string {

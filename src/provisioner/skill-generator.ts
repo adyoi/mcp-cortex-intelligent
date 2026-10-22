@@ -1,4 +1,4 @@
-export const SKILL_VERSION = "1.1.0";
+export const SKILL_VERSION = "1.2.0";
 
 export function skillAutoBlock(): string {
   return `# Cognitive Procedure (auto)
@@ -24,7 +24,13 @@ When to use:
 - model_decision for tier/risk/route.
 - get_guardrails before risky actions.
 - task_list / task_create to track work.
-- run_verification before marking done.`;
+- run_verification before marking done.
+
+Browser accuracy (web-based tasks):
+- Prefer OpenCode browser tools (browser.*) for JS-rendered pages, screenshots, forms.
+- Fall back to MCP webfetch (SSRF-guarded) when browser tools unavailable.
+- Use webfetch_validate for untrusted URLs. Never store secrets from fetched content.
+- See .opencode/skills/browser-accuracy/SKILL.md.`;
 }
 
 export function skillPath(projectRoot: string): string {

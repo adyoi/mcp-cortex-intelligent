@@ -13,7 +13,7 @@ Run a comprehensive audit of the project for the current workspace — clean up,
    - Rust: `cargo clippy`, `cargo test`
    - Go: `go vet`, `go test ./...`
    - Generic: compile/build if a build script exists; run the project's test command.
-6. Run `lsp_diagnostics` (project_root = current workspace) for language-server-style diagnostics (tsc/pyright/cargo check/go vet) — structured, location-aware issues.
+6. Run `lsp_diagnostics` (project_root = current workspace) for language-server-style diagnostics (tsc/pyright/cargo check/go vet) — structured, location-aware issues. For web-based tasks, also use OpenCode browser tools (`browser.tabs.open`, `browser.snapshot`, `browser.screenshot`, `browser.console`) for accuracy, falling back to MCP `webfetch` when unavailable (see `.opencode/skills/browser-accuracy/SKILL.md`).
 7. Audit for (language-agnostic): security (SSRF, path traversal, secrets, injection), performance (N+1, unbounded memory/collections, sync I/O in hot path), dead code, unused imports/exports, docs drift, hardcoded absolute paths, banned words in docs, missing tests.
 8. Clean up: remove stale/unused files, backups, dead code, redundant imports.
 9. Fix issues: apply minimal, safe fixes for every finding (security, correctness, performance).

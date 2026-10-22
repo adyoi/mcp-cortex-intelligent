@@ -1,4 +1,4 @@
-<!-- cortex:auto:begin v=1.1.0 sha=161abfd861f1791457767b784d0536572b81fdcfa24fb8abaeaa1d0556cdafda -->
+<!-- cortex:auto:begin v=1.2.0 sha=161abfd861f1791457767b784d0536572b81fdcfa24fb8abaeaa1d0556cdafda -->
 # Cognitive Procedure (auto)
 
 Standard procedure (scale to model tier):
@@ -23,4 +23,21 @@ When to use:
 - get_guardrails before risky actions.
 - task_list / task_create to track work.
 - run_verification before marking done.
+
+Browser accuracy (web-based tasks):
+- Prefer OpenCode browser tools (browser.*) for JS-rendered pages, screenshots, forms.
+- Fall back to MCP webfetch (SSRF-guarded) when browser tools unavailable.
+- Use webfetch_validate for untrusted URLs. Never store secrets from fetched content.
+- See .opencode/skills/browser-accuracy/SKILL.md.
 <!-- cortex:auto:end -->
+
+## Browser Accuracy (web-based tasks)
+
+When a task involves fetching, reading, or verifying web content:
+- **Prefer OpenCode browser tools** (`browser.tabs.open`, `browser.snapshot`, `browser.screenshot`, `browser.console`, `browser.network`) for JS-rendered pages, screenshots, forms, and visual verification.
+- **Fallback to MCP `webfetch`** (SSRF-guarded, timeout, size cap) when browser tools are unavailable (Claude Desktop, Cursor, VS Code, etc.).
+- Use `webfetch_validate` first for untrusted URLs.
+- Close browser tabs after use (avoid resource leaks).
+- Never store secrets found in fetched content.
+
+See `.opencode/skills/browser-accuracy/SKILL.md` for the full reusable strategy.
