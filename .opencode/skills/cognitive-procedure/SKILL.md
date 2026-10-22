@@ -30,14 +30,3 @@ Browser accuracy (web-based tasks):
 - Use webfetch_validate for untrusted URLs. Never store secrets from fetched content.
 - See .opencode/skills/browser-accuracy/SKILL.md.
 <!-- cortex:auto:end -->
-
-## Browser Accuracy (web-based tasks)
-
-When a task involves fetching, reading, or verifying web content:
-- **Prefer OpenCode browser tools** (`browser.tabs.open`, `browser.snapshot`, `browser.screenshot`, `browser.console`, `browser.network`) for JS-rendered pages, screenshots, forms, and visual verification.
-- **Fallback to MCP `webfetch`** (SSRF-guarded, timeout, size cap) when browser tools are unavailable (Claude Desktop, Cursor, VS Code, etc.).
-- Use `webfetch_validate` first for untrusted URLs.
-- Close browser tabs after use (avoid resource leaks).
-- Never store secrets found in fetched content.
-
-See `.opencode/skills/browser-accuracy/SKILL.md` for the full reusable strategy.
