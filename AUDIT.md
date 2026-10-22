@@ -36,7 +36,9 @@
 ## Fixed
 All findings above are fixed in commits through `d9411da` + this audit pass. Verification: typecheck ✅, lint ✅, build ✅, `npm test` 259/259 ✅.
 
-## Remaining / Notes (updated 2026-10-22)
+## Remaining / Notes (updated 2026-10-22, /clean run)
+
+- Cleanup run (/clean): removed 4 stale `.bak-*` artifacts + `.test-data`. No dead code or unused imports (oxlint clean). No hardcoded paths. No banned words. LSP diagnostics: 0 issues. All checks pass (259/259).
 - GitHub Pages deployment may still be "in progress" (GitHub infra) — code/docs already pushed.
 - `npm publish` skipped per user instruction (release v1.0.0 created without publish).
 - `init_audit` tool requires OpenCode MCP server restart to load new dist (source + dist verified correct).
