@@ -36,7 +36,9 @@
 ## Fixed
 All findings above are fixed in commits through `d9411da` + this audit pass. Verification: typecheck ✅, lint ✅, build ✅, `npm test` 259/259 ✅.
 
-## Remaining / Notes (updated 2026-10-22, /clean run)
+## Remaining / Notes (updated 2026-10-22, /audit run)
+
+- Audit run (/audit): all checks pass (typecheck/lint/build/test 259/259). LSP diagnostics: 0 issues. No banned words, no hardcoded paths, no stale .bak, no dead code. DB health: FTS5 rebuilt (integrity ok). 62 tools registered, 18 slash commands, docs synced to 62/259. No overlap/redundancy found.
 
 - Cleanup run (/clean): removed 4 stale `.bak-*` artifacts + `.test-data`. No dead code or unused imports (oxlint clean). No hardcoded paths. No banned words. LSP diagnostics: 0 issues. All checks pass (259/259).
 - GitHub Pages deployment may still be "in progress" (GitHub infra) — code/docs already pushed.
