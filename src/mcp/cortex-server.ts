@@ -674,11 +674,13 @@ reg(
     provision(agentPath(args.project_root), agentAutoBlock(), AGENT_VERSION);
     provision(skillPath(args.project_root), skillAutoBlock(), SKILL_VERSION);
     pt.initAgents(args.project_root);
-    if (process.env.CORTEX_AUTO_CONSOLIDATE === "1") {
+    // Seed default exemplars on first bootstrap (idempotent).
+    try { const { seedDefaultExemplars } = await import("../cognitive/exemplars.js"); await seedDefaultExemplars(); } catch { /* seeding must not break bootstrap */ }
+    if (process.env.CORTEX_AUTO_CONSOLIDATE !== "0") {
       try {
         const { consolidate } = await import("../memory/memory.js");
         await consolidate();
-      } catch { /* opt-in consolidation must not break bootstrap */ }
+      } catch { /* consolidation must not break bootstrap */ }
     }
     return { content: [{ type: "text", text: JSON.stringify({ model, tier, decision: md, provisioned: true }) }] };
   }
