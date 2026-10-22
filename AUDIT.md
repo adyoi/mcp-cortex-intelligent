@@ -36,7 +36,7 @@
 ## Fixed
 All findings above are fixed in commits through `d9411da` + this audit pass. Verification: typecheck ✅, lint ✅, build ✅, `npm test` 259/259 ✅.
 
-## Remaining / Notes
+## Remaining / Notes (updated 2026-10-22)
 - GitHub Pages deployment may still be "in progress" (GitHub infra) — code/docs already pushed.
 - `npm publish` skipped per user instruction (release v1.0.0 created without publish).
 - `init_audit` tool requires OpenCode MCP server restart to load new dist (source + dist verified correct).
