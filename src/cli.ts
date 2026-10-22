@@ -267,7 +267,7 @@ async function run(cmd: string, args: string[]) {
           const lsp = runLspDiagnostics(root);
           const cachePath = path.join(process.env.CORTEX_DB_DIR || path.join(root, ".cortex-data"), "context-cache.json");
           fs.mkdirSync(path.dirname(cachePath), { recursive: true });
-          fs.writeFileSync(cachePath, JSON.stringify({ ts: Date.now(), block: (ctx as any)?.context ?? "", task: taskSummary(), lsp: { language: lsp.language, ok: lsp.ok, errors: lsp.diagnostics.filter(d => d.severity === "error").length, warnings: lsp.diagnostics.filter(d => d.severity === "warning").length, top: lsp.diagnostics.slice(0, 5) } }));
+          fs.writeFileSync(cachePath, JSON.stringify({ ts: Date.now(), block: (ctx as any)?.context ?? "", task: taskSummary(), lsp: { language: lsp.language, ok: lsp.ok, errors: lsp.diagnostics.filter((d) => d.severity === "error").length, warnings: lsp.diagnostics.filter((d) => d.severity === "warning").length, top: lsp.diagnostics.slice(0, 5) } }));
         } catch { /* ignore */ }
         out = { model, tier, provisioned: true, root };
         break;
@@ -287,6 +287,7 @@ async function run(cmd: string, args: string[]) {
       }
       case "task-summary":
         out = taskSummary();
+        break;
       case "lsp": {
         const root = args[0] ?? process.cwd();
         const { runLspDiagnostics } = await import("./system/lsp.js");
