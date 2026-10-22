@@ -1,4 +1,4 @@
-<!-- cortex:auto:begin v=1.2.0 sha=161abfd861f1791457767b784d0536572b81fdcfa24fb8abaeaa1d0556cdafda -->
+<!-- cortex:auto:begin v=1.2.0 sha=7af3b9eea92bb9babfe195238fc98e1273d3a3204847abc38bbc4a33e9229179 -->
 # Cognitive Procedure (auto)
 
 Standard procedure (scale to model tier):
