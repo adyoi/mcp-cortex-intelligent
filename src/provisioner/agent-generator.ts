@@ -1,4 +1,4 @@
-export const AGENT_VERSION = "1.3.0";
+export const AGENT_VERSION = "1.4.0";
 
 export function agentAutoBlock(): string {
   return `# Cognitive Guardian (auto)
