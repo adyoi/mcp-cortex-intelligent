@@ -6,7 +6,7 @@ description: >
   desktop browser tools (browser.*) for accuracy; fall back to the MCP
   `webfetch` tool when browser tools are unavailable (Claude Desktop,
   Cursor, VS Code, etc.). Reusable by any agent that adopts this skill.
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Browser Accuracy Skill
@@ -26,9 +26,13 @@ version: 1.0.0
    - Use `browser.console` and `browser.network` to detect runtime errors.
    - Close the tab when done to avoid leaks.
 
-2. **Otherwise** (non-OpenCode clients, or browser tools unavailable):
+2. **Headless browser (MCP `browser_fetch`)** — if `playwright` or `puppeteer`
+   is installed (optional dependency), use `browser_fetch` for JS-rendered
+   content, console messages, network requests, and page errors. Returns
+   structured data (title, text, html, console, network, pageErrors).
+
+3. **Otherwise** (no headless browser, non-OpenCode clients):
    - Use the MCP `webfetch` tool (SSRF-guarded, timeout, size cap, optional ingest).
-   - If `playwright` or `puppeteer` is installed, use MCP `browser_fetch` (renders JS, returns text + HTML).
    - Note: `webfetch` returns static HTML only — JS-rendered content may be missing.
    - Use `webfetch_validate` first to check URL safety without fetching.
 
@@ -37,7 +41,13 @@ version: 1.0.0
 - Always validate URLs (SSRF guard) before fetching.
 - Prefer `webfetch_validate` for untrusted URLs.
 - Close browser tabs after use (avoid resource leaks).
-- For SPAs, prefer browser tools; `webfetch` will miss client-rendered content.
+- For SPAs, prefer browser tools or `browser_fetch`; `webfetch` will miss client-rendered content.
+
+## Install (optional, for headless rendering)
+```bash
+npm i playwright
+npx playwright install chromium
+```
 
 ## Reuse
 This skill is standalone and can be adopted by any agent. Copy `.opencode/skills/browser-accuracy/SKILL.md`

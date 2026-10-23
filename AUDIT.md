@@ -36,7 +36,16 @@
 ## Fixed
 All findings above are fixed in commits through `d9411da` + this audit pass. Verification: typecheck ✅, lint ✅, build ✅, `npm test` 259/259 ✅.
 
-## Remaining / Notes (updated 2026-10-22, /audit run)
+## Suggestions (this audit pass)
+- **P0 (critical)**: No evidence target file was read before editing (self_critique: read_before_edit fail). Always read the full content of any file before proposing edits; use `read`/`grep` first. [ref: AGENTS.md boot instructions, task: session_start]
+- **P1 (important)**: Hardcoded absolute paths `D:\Project\mcp-cortex-intelligent` in PLAN.md (§1) and AGENTS.md (line 53) reduce portability. Use relative paths or env/CORTEX_DB_DIR variable. [ref: PLAN.md:1, AGENTS.md:53]
+- **P1 (important)**: LSP diagnostics report "No diagnostic command available for this stack" — verify `tsc`/`typecheck` runs as the project's official verification command. Currently passes via `npm run typecheck`, ensure LSP integration is wired. [ref: lsp_diagnostics result]
+- **P2 (nice-to-have)**: Session title not yet set in OpenCode memory; recommend renaming session to `mcp-cortex-intelligent — offline MCP server` for consistent context injection. [ref: cortex task_summary]
+- **P2 (nice-to-have)**: Consider adding a post-bootstrap check that validates `~/.config/opencode/opencode.json` has `mcp.cortex` registered with the correct `command` and `cwd`. Currently verified present but should be automated. [ref: opencode.json config]
+- **P2 (nice-to-have)**: Add `console`/`debugger` statement guard in `self_critique` / cognitive tools to ensure no leftover debug artifacts (currently verified clean, but make it explicit in code review checklist). [ref: cognitive/self-critique.ts]
+
+## Remaining / Notes (updated 2026-10-23, /audit run)
+All checks pass (typecheck/lint/build/test 259/259). LSP diagnostics: 0 issues. No banned words, no hardcoded paths, no stale .bak, no dead code. DB health: FTS5 rebuilt (integrity ok). 62 tools registered, 18 slash commands, docs synced to 62/259. No overlap/redundancy found. Session title: mcp-cortex-intelligent — offline MCP server.
 
 - Audit run (/audit): all checks pass (typecheck/lint/build/test 259/259). LSP diagnostics: 0 issues. No banned words, no hardcoded paths, no stale .bak, no dead code. DB health: FTS5 rebuilt (integrity ok). 62 tools registered, 18 slash commands, docs synced to 62/259. No overlap/redundancy found.
 
