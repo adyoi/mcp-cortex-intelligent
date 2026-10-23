@@ -27,7 +27,7 @@ import {
   setEmbedMeta,
   setEmbedState,
 } from "../db/database.js";
-import { embedTextUnguarded, modelName } from "./embeddings.js";
+import { embedTextUnguarded, modelName, expectedDim } from "./embeddings.js";
 import { invalidateVectorCache } from "./vector-search.js";
 
 export const REINDEX_BATCH = 32;
@@ -56,6 +56,8 @@ export interface ReindexResult {
 export interface ReindexOptions {
   batchSize?: number;
   onProgress?: (p: ReindexProgress) => void;
+  /** Skip re-embedding when model + dimension are unchanged (incremental). */
+  skipIfUnchanged?: boolean;
 }
 
 function resolveBatch(raw: number | undefined): number {
@@ -130,6 +132,23 @@ export async function reindex(opts: ReindexOptions = {}): Promise<ReindexResult>
   const dimBefore = getEmbedDim();
   const modelBefore = getEmbedModel();
   const modelAfter = modelName();
+
+  // Incremental (opt-in): if opts.skipIfUnchanged is set and the model +
+  // dimension are identical, there is nothing to migrate — skip the full re-embed.
+  // Default behaviour always re-embeds so reindex() stays a reliable
+  // "force refresh" for operators and existing tests.
+  if (opts.skipIfUnchanged && modelBefore === modelAfter && dimBefore > 0 && dimBefore === expectedDim()) {
+    return {
+      chunks: 0,
+      memories: 0,
+      dimBefore,
+      dimAfter: dimBefore,
+      modelBefore,
+      modelAfter,
+      ms: Date.now() - started,
+      changed: false,
+    };
+  }
 
   const chunksRow = getDB().prepare("SELECT COUNT(*) AS n FROM chunks").get() as { n: number };
   const memoriesRow = getDB().prepare("SELECT COUNT(*) AS n FROM memories").get() as { n: number };

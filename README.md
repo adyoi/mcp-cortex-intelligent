@@ -170,9 +170,24 @@ npm start
 
 Full documentation: https://adyoi.github.io/mcp-cortex-intelligent/
 
-## Contributing
+## Multi-project isolation
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+Each project can use its own DB by setting `CORTEX_DB_DIR`:
+
+```json
+{
+  "mcp": {
+    "cortex": {
+      "type": "local",
+      "command": ["node", "~/mcp-cortex-intelligent/dist/index.js"],
+      "cwd": "~/my-project",
+      "environment": { "CORTEX_DB_DIR": "~/my-project/.cortex-data" }
+    }
+  }
+}
+```
+
+Or via `.env` in the project root: `CORTEX_DB_DIR=.cortex-data`. The plugin (`cortex-auto`) honors `CORTEX_DB_DIR` and reads the cache from the correct directory.
 
 ## Contributing
 
