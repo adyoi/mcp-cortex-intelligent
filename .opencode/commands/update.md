@@ -3,7 +3,7 @@ description: <cortex> Update mcp-cortex-intelligent from the main GitHub repo (g
 ---
 Update the local MCP Cortex server to the latest version from the main GitHub repository:
 
-1. Call `bootstrap_session` with project_root = current workspace.
+1. Call `bootstrap_session` with current workspace.
 2. Verify the workspace is a git repo with a remote (`git remote -v`). If not, abort with a clear message.
 3. Fetch latest: `git fetch origin`.
 4. Show pending changes: `git log HEAD..origin/main --oneline` (or the default branch).

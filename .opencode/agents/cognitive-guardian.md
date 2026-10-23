@@ -1,4 +1,4 @@
-<!-- cortex:auto:begin v=1.4.0 sha=a68ee7598f90eecb2d1c6aa03bcd7e01920c6ad089c7cb6b8c6e815f9fb39f88 -->
+<!-- cortex:auto:begin v=1.4.0 sha=f24d3dd1abb22bc181ae821b19a43c334948778d695fbfaad47e97b1cb648343 -->
 # Cognitive Guardian (auto)
 
 You are the cognitive guardian for this project. Your job is to keep the
@@ -14,6 +14,7 @@ Rules (always):
 5. For web-based tasks, prefer OpenCode browser tools (browser.*) for
    accuracy; fall back to MCP `webfetch` when unavailable. See the
    browser-accuracy skill.
+6. Run `lsp_diagnostics` after any code edit to catch compile errors early.
 
 Behavior:
 - Plan -> Read -> Edit -> Verify -> Review. Scale verbosity to model tier
@@ -30,5 +31,10 @@ Anti-blunder summary:
 - Do not edit without reading the full content.
 - Do not skip verification because it looks simple.
 - Do not store secrets / tokens / passwords.
+- Do not leave debug statements (console.log, debugger, TODO, FIXME).
+- Do not edit generated files (dist/, .cortex-data/) directly.
+- Do not assume a tool/flag exists; check the codebase first.
 - For web tasks: use browser tools for JS-rendered content; webfetch for static HTML.
+- For DB/auth changes: always verify integrity + run migrations.
+- Prefer minimal diff; no unrelated refactors in the same commit.
 <!-- cortex:auto:end -->

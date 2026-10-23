@@ -3,7 +3,7 @@ description: <cortex> Clean up project: remove stale files, dead code, backups, 
 ---
 Clean up the current project (works for any language/stack):
 
-1. Call `bootstrap_session` with project_root = current workspace.
+1. Call `bootstrap_session` with current workspace.
 2. Explore all files: read src/, lib/, app/, docs/, .opencode/, scripts/, .github/, tests/, and root-level config files. Identify stale, unused, or redundant artifacts.
 3. Clean up:
    - Remove stale backup files (`.bak`, `.bak-*`, `*.orig`, `*.rej`).
@@ -12,7 +12,7 @@ Clean up the current project (works for any language/stack):
    - Remove empty directories.
    - Clear temporary/build artifacts (`.test-data`, `dist/` if stale, `node_modules/.cache`, `__pycache__`, `target/`, etc.) — only if safe.
 4. **Mojibake check**: scan all text files for mojibake (garbled chars from encoding mismatches, e.g. `ΓÇö`, `Ã©`, `â€™`, `Â`, `�`). Re-encode affected files as UTF-8, fix or remove garbled sequences. Common causes: UTF-8 interpreted as Latin-1/Windows-1252, double-encoding, BOM mismatch. Verify with `file`/editor.
-5. Run `lsp_diagnostics` (project_root = current workspace) for language-server-style diagnostics after cleanup.
+5. Run `lsp_diagnostics` (current workspace) for language-server-style diagnostics after cleanup.
 6. Run checks appropriate to the detected stack:
    - Node/TS: `npm run typecheck`, `npm run lint`, `npm run build`, `npm test`
    - Python: `ruff check`, `mypy`, `pytest`
