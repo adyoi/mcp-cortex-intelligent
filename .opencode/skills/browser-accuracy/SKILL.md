@@ -6,7 +6,7 @@ description: >
   desktop browser tools (browser.*) for accuracy; fall back to the MCP
   `webfetch` tool when browser tools are unavailable (Claude Desktop,
   Cursor, VS Code, etc.). Reusable by any agent that adopts this skill.
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Browser Accuracy Skill
@@ -19,20 +19,16 @@ version: 1.1.0
 
 ## Strategy (browser-first, webfetch fallback)
 
-1. **If OpenCode browser tools are available** (`browser.tabs.open`, `browser.snapshot`,
-   `browser.screenshot`, `browser.console`, `browser.network`):
-   - Open the URL in a tab: `browser.tabs.open({ url })`.
-   - Wait for load, then `browser.snapshot` / `browser.screenshot` for visual truth.
-   - Use `browser.console` and `browser.network` to detect runtime errors.
-   - Close the tab when done to avoid leaks.
+**Step 0 — Detect environment:**
+- If OpenCode desktop browser tools are available (`browser.tabs.open`, `browser.snapshot`, `browser.screenshot`, `browser.console`, `browser.network`): **use them (most accurate)**.
+- If not (Claude Desktop, Cursor, VS Code, etc.): proceed to step 1/2.
 
-2. **Headless browser (MCP `browser_fetch`)** — if `playwright` or `puppeteer`
+1. **Headless browser (MCP `browser_fetch`)** — if `playwright` or `puppeteer`
    is installed (optional dependency), use `browser_fetch` for JS-rendered
    content, console messages, network requests, and page errors. Returns
    structured data (title, text, html, console, network, pageErrors).
 
-3. **Otherwise** (no headless browser, non-OpenCode clients):
-   - Use the MCP `webfetch` tool (SSRF-guarded, timeout, size cap, optional ingest).
+2. **Static fetch (MCP `webfetch`)** — SSRF-guarded, timeout, size cap, optional ingest.
    - Note: `webfetch` returns static HTML only — JS-rendered content may be missing.
    - Use `webfetch_validate` first to check URL safety without fetching.
 
