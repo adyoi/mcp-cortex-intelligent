@@ -174,6 +174,10 @@ Full documentation: https://adyoi.github.io/mcp-cortex-intelligent/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+
 ## License
 
 MIT

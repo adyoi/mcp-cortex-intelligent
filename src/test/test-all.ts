@@ -548,6 +548,9 @@ async function main() {
     check("webfetch_validate works", wv.includes('"ok":true') || wv.includes('"ok": true'), wv);
     const wvBad = await ccall("webfetch_validate", { url: "http://localhost/" });
     check("webfetch_validate blocks localhost", wvBad.includes('"ok":false') || wvBad.includes('"ok": false'), wvBad);
+    // browser_fetch smoke (headless playwright).
+    const bf = await ccall("browser_fetch", { url: "https://example.com", max_chars: 200 });
+    check("browser_fetch returns a result", bf.includes('"available"'), bf.slice(0, 120));
     const ia = await ccall("init_agents", { project_root: ROOT });
     check("init_agents works", ia.includes("path"), ia);
     const iau = await ccall("init_audit", { project_root: ROOT });
