@@ -44,7 +44,9 @@ All findings above are fixed in commits through `d9411da` + this audit pass. Ver
 - **P2 (nice-to-have)**: Consider adding a post-bootstrap check that validates `~/.config/opencode/opencode.json` has `mcp.cortex` registered with the correct `command` and `cwd`. Currently verified present but should be automated. [ref: opencode.json config]
 - **P2 (nice-to-have)**: Add `console`/`debugger` statement guard in `self_critique` / cognitive tools to ensure no leftover debug artifacts (currently verified clean, but make it explicit in code review checklist). [ref: cognitive/self-critique.ts]
 
-## Remaining / Notes (updated 2026-10-23, /audit run)
+## Remaining / Notes (updated 2026-10-23, /audit run 2)
+
+- Audit run 2 (/audit): all checks pass (typecheck/lint/build/test 260/260). LSP diagnostics: 0 issues. No banned words, no hardcoded paths, no stale .bak, no dead code, no real mojibake. DB health: ok (FTS5 rebuilt). 62 tools registered, 20 slash commands, docs synced to 62/260. No overlap/redundancy found. Playwright + Chromium installed, browser_fetch renders JS (available:true, ok:true). Working tree clean, ter-push.
 All checks pass (typecheck/lint/build/test 259/259). LSP diagnostics: 0 issues. No banned words, no hardcoded paths, no stale .bak, no dead code. DB health: FTS5 rebuilt (integrity ok). 62 tools registered, 18 slash commands, docs synced to 62/259. No overlap/redundancy found. Session title: mcp-cortex-intelligent — offline MCP server.
 
 - Audit run (/audit): all checks pass (typecheck/lint/build/test 259/259). LSP diagnostics: 0 issues. No banned words, no hardcoded paths, no stale .bak, no dead code. DB health: FTS5 rebuilt (integrity ok). 62 tools registered, 18 slash commands, docs synced to 62/259. No overlap/redundancy found.

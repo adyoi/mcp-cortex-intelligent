@@ -1,4 +1,4 @@
-<!-- cortex:auto:begin v=1.4.0 sha=7af3b9eea92bb9babfe195238fc98e1273d3a3204847abc38bbc4a33e9229179 -->
+<!-- cortex:auto:begin v=1.4.0 sha=3a0847699099506400c6d4eb12a20033e272a145cf616928024ccbfa716bdd4a -->
 # Cognitive Procedure (auto)
 
 ## Standard procedure (scale to model tier)
@@ -31,7 +31,7 @@
 - High-risk tasks require manual review.
 
 ### Security
-- Never store secrets / tokens / passwords in memory or committed files.
+- Never store secrets / tokens / passwords in memory or in committed files.
 - For web tasks: use browser tools for JS-rendered content; webfetch for static HTML.
 - Use `webfetch_validate` for untrusted URLs. Never store secrets from fetched content.
 - For DB/auth changes: always verify integrity + run migrations.
@@ -61,24 +61,24 @@
 - Use `browser_fetch` (headless playwright/puppeteer) if installed; falls back to webfetch.
 - Use `webfetch_validate` for untrusted URLs. Never store secrets from fetched content.
 - Close browser tabs after use (avoid resource leaks).
-- See `.opencode/skills/browser-accuracy/SKILL.md`.
+- See .opencode/skills/browser-accuracy/SKILL.md.
 
 ## Memory & knowledge
 - `memory_context(topic)` at session start (long-term memories, not raw transcripts).
 - `knowledge_sync_session(directory)` to ingest prior session transcripts.
 - `memory_remember` for facts/decisions/preferences (importance 0.5 default).
-- `memory_consolidate` to dedupe + promote (auto-runs if `CORTEX_AUTO_CONSOLIDATE=1`).
+- `memory_consolidate` to dedupe + promote (auto-runs if CORTEX_AUTO_CONSOLIDATE != 0).
 - Decay: memories fade by half-life (default 14 days, configurable).
 
 ## Error handling & recovery
 - If a tool fails, read the error, fix root cause, re-run.
-- If DB is corrupt, run `integrity_check` / rebuild FTS index.
-- If paths are wrong, verify with `read` before editing.
+- If DB is corrupt, run integrity_check / rebuild FTS index.
+- If paths are wrong, verify with read before editing.
 - If tests fail, fix code (not tests) unless test is genuinely wrong.
 
 ## Context management
 - Keep todo list as living document, not contract.
 - Re-sync todo list on user interrupt.
 - Scale verbosity to model tier.
-- Use `task_list` / `task_summary` to track progress.
+- Use task_list / task_summary to track progress.
 <!-- cortex:auto:end -->
