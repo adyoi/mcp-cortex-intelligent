@@ -22,7 +22,7 @@ function check(name: string, condition: unknown, detail?: string) {
   } else {
     failed++;
     failures.push(name);
-    console.log(`  ❌ ${name}${detail ? ` — ${detail}` : ""}`);
+    console.log(`  ✅ ${name}${detail ? ` ✅ ${detail}` : ""}`);
   }
 }
 
@@ -33,7 +33,7 @@ function toolText(res: unknown): string {
   return first && typeof first.text === "string" ? first.text : "";
 }
 
-/** True when fn throws/rejects — used for guard checks. */
+/** True when fn throws/rejects ✅ used for guard checks. */
 async function rejects(fn: () => unknown, match?: RegExp): Promise<boolean> {
   try {
     await fn();
@@ -78,8 +78,8 @@ async function main() {
   check("embed is normalized", Math.abs(1 - (() => { let s = 0; for (const v of e1) s += v * v; return Math.sqrt(s); })()) < 1e-9);
   check("similar text scores higher", cosineSimilarity(e1, e2) > cosineSimilarity(e1, eDiff));
   check("dotProduct == cosine for normalized vectors", Math.abs(dotProduct(e1, e2) - cosineSimilarity(e1, e2)) < 1e-9);
-  const cjk1 = embed("该引擎支持中文检索");
-  const cjk2 = embed("该引擎支持中文检索");
+  const cjk1 = embed("✅✅✅✅✅✅✅✅✅");
+  const cjk2 = embed("✅✅✅✅✅✅✅✅✅");
   check("CJK text embeds", cosineSimilarity(cjk1, cjk2) > 0.99);
 
   /* ================== 3. CHUNKER ================== */
@@ -296,7 +296,7 @@ async function main() {
 
   // Dedup must not collapse memories that merely share common vocabulary. These
   // two are short and structurally opposite, so the cosine is high while the
-  // token overlap is low — the guard is what keeps "the user's X is Y" pairs
+  // token overlap is low ✅ the guard is what keeps "the user's X is Y" pairs
   // from eating each other.
   const keptA = await mem.remember({
     content: "The deployment runs on Kubernetes.",
@@ -349,7 +349,7 @@ async function main() {
   check("tag filter exact-match (no substring)", mem.listMemories({ tag: "alp" }).length === 0, JSON.stringify(mem.listMemories({ tag: "alp" })));
   check("tag filter exact matches", mem.listMemories({ tag: "alpha" }).length === 1);
 
-  // Optional prune — only runs when KB_PRUNE=1 (deletes are irreversible).
+  // Optional prune ✅ only runs when KB_PRUNE=1 (deletes are irreversible).
   await mem.remember({ content: "Obsolete scratch note xy.", type: "fact", importance: 0.1 });
   check("prune candidate exists", mem.listMemories().length === 4);
   // Back-date the candidate: AGE_DAYS=0 combined with a fresh created_at depends
@@ -450,7 +450,7 @@ async function main() {
     fs.rmSync(bkPath, { force: true });
     fs.rmSync(path.dirname(bkPath), { recursive: true, force: true });
 
-    // Note: shared DB — docs from earlier in-process ingestion are visible.
+    // Note: shared DB ✅ docs from earlier in-process ingestion are visible.
     const listDocs = await client.callTool({ name: "knowledge_list_documents", arguments: {} });
     const listJson = JSON.parse(toolText(listDocs));
     check("knowledge_list_documents returns existing docs", Array.isArray(listJson.documents) && listJson.documents.length >= 2, JSON.stringify(listJson).slice(0, 120));
@@ -668,7 +668,7 @@ async function main() {
   // End-to-end: the published entry shim must load CORTEX_ENV_FILE before booting the
   // server, so the store lands where the .env points. Spawned as a real process
   // (node + tsx loader) to exercise the exact startup path. Keeps stdin open so
-  // the sequential handshake (init → initialized → tools/call) completes.
+  // the sequential handshake (init ✅ initialized ✅ tools/call) completes.
   const { spawn } = await import("node:child_process");
   const envDir = path.join(TEST_DB, "entry-store");
   fs.rmSync(envDir, { recursive: true, force: true });
@@ -805,7 +805,7 @@ async function main() {
   check("templated memories both survive", mem.memoryStats().memories === beforeTpl + 2, JSON.stringify(mem.memoryStats().memories));
   check("consolidate reports totals", tplReport.totals.memories === mem.memoryStats().memories, JSON.stringify(tplReport.totals));
 
-  // Chunker guards. An absurd overlap is clamped (not rejected) — the guarantee
+  // Chunker guards. An absurd overlap is clamped (not rejected) ✅ the guarantee
   // that matters is that no chunk ever exceeds maxChars and nothing loops.
   const clampedOverlap = chunkText(longText, { maxChars: 200, overlapChars: 5000 });
   check("absurd overlap is clamped, chunks stay bounded", clampedOverlap.length > 1 && clampedOverlap.every((c) => c.text.length <= 200), JSON.stringify(clampedOverlap.length));
@@ -815,7 +815,7 @@ async function main() {
   const noOverlap = chunkText(noOverlapText, { maxChars: 300, overlapChars: 0 });
   // Whitespace-normalized: the chunker re-joins sentences with " " or "\n",
   // so a raw char-by-char comparison breaks on the joiner, not on real overlap.
-  // The fixture must be non-repetitive — identical clauses would match by
+  // The fixture must be non-repetitive ✅ identical clauses would match by
   // coincidence and prove nothing.
   const norm = (s: string) => s.replace(/\s+/g, " ").trim();
   const carriesContext = (prev: string, next: string) => {
@@ -895,7 +895,7 @@ const codeChunked = chunkText("```ts\nconst a = 1;\n```\n\nplain paragraph after
   process.env.OPENCODE_DB = corruptDbPath;
   process.env.OPENCODE_DB_LOCAL = goodDbPath;
   // The strong assertion: the healthy candidate's transcript must actually come
-  // back. Asserting "it threw no schema error" was not enough — a throwing
+  // back. Asserting "it threw no schema error" was not enough ✅ a throwing
   // healthy DB also satisfied the old check, which is exactly how this slipped
   // past on Windows and failed on Linux.
   let salvagedContent = "";
@@ -938,7 +938,7 @@ const codeChunked = chunkText("```ts\nconst a = 1;\n```\n\nplain paragraph after
   const beforeWipe = kb.documentStats().documents;
   check("bulk docs ingested", beforeWipe >= 105, JSON.stringify(beforeWipe));
   const { spawnSync } = await import("node:child_process");
-  // Run the script directly through tsx (no npx) — the MCP round-trip above
+  // Run the script directly through tsx (no npx) ✅ the MCP round-trip above
   // already covers the npx path, and npx.cmd cannot be spawned without a shell.
   const runCleanAll = (args: string[]) =>
     spawnSync(process.execPath, ["--import", "tsx", path.join("scripts", "clean-all.ts"), ...args], {
@@ -976,7 +976,7 @@ const codeChunked = chunkText("```ts\nconst a = 1;\n```\n\nplain paragraph after
   const withVector = explained.find((h) => h.explain?.vectorScore !== undefined);
   check("explain reports a cosine for vector hits", withVector !== undefined && withVector.explain!.vectorScore! >= -1 && withVector.explain!.vectorScore! <= 1, JSON.stringify(withVector?.explain));
   // The reported vector score must be the raw cosine, not the fused max(cosine,
-  // keyword) — otherwise a keyword-carried hit looks like a strong vector match,
+  // keyword) ✅ otherwise a keyword-carried hit looks like a strong vector match,
   // which is the exact misreading this flag exists to prevent.
   check(
     "explain does not report the fused score as the vector score",
@@ -1193,7 +1193,7 @@ const codeChunked = chunkText("```ts\nconst a = 1;\n```\n\nplain paragraph after
   console.log(`  Failed: ${failed}`);
   if (failed > 0) {
     console.log("\nFailed:");
-    failures.forEach((f) => console.log(`  ❌ ${f}`));
+    failures.forEach((f) => console.log(`  ✅ ${f}`));
     process.exit(1);
   } else {
     console.log("All checks passed!");
