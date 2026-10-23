@@ -4,30 +4,62 @@ All notable changes to mcp-cortex-intelligent are documented here.
 
 ## [Unreleased]
 
-## [1.0.1] - 2026-10-21
+## [1.1.0] - 2026-10-23
 
 ### Added
-- `init_audit` tool + `/audit` slash command (repo + global): scaffold `AUDIT.md`, explore/check/audit/fix/optimize workflow.
+- `lsp_diagnostics` tool: language-server-style diagnostics (tsc/pyright/cargo check/go vet) — structured, location-aware issues.
+- `browser_fetch` tool: headless browser (playwright/puppeteer) for JS-rendered pages; returns text, HTML, console, network, pageErrors. Falls back to webfetch.
+- `task_from_plan` tool: auto-generate tasks from PLAN.md step/bullet lines.
+- `init_audit` tool + `/audit` slash command: scaffold AUDIT.md, explore/check/audit/fix/optimize workflow.
+- `/clean`, `/update`, `/review`, `/doctor`, `/init` slash commands.
+- `browser-accuracy` skill (reusable, browser-first strategy with webfetch fallback).
 - `CONTRIBUTING.md` + `SECURITY.md`.
 - Per-module test suites (`src/test/modules/`: embedder, chunker, webfetch, telemetry, guardrails, self-critique) + runner `test-modules.ts`.
+- Playwright + Chromium installed (optional dep, graceful fallback).
+- Default exemplars seeded (code review, debug, refactor, test, security).
+- GitHub Pages CI workflow (`pages.yml`).
+- Graceful shutdown (SIGTERM/SIGINT → closeDB).
+- Verifier auto-detect stack (Node/Python/Rust/Go/Makefile).
+- Incremental reindex (`skipIfUnchanged` opt-in).
+- Webfetch disk cache (cross-session, TTL 1h, LRU) + binary content handling.
+- Telemetry query by tool (SQL GROUP BY + index).
 
 ### Changed
 - Renamed `init_agents_md` → `init_agents` (tool name + manager export + cli).
+- Tool count 58 → 62; test count 258 → 260.
 - Telemetry `telemetry` table: added `tool` column + `idx_telemetry_tool` index (ALTER migration for pre-release DBs).
-- `webfetch`: bounded in-memory fetch cache (TTL 60s, LRU cap 200), cache key includes opts; SSRF guard hardened (decimal/hex/octal, mapped IPv6, 0.0.0.0); redirect `new URL` guarded.
-- `bootstrap_session`: opt-in `CORTEX_AUTO_CONSOLIDATE=1` triggers memory consolidation.
+- `webfetch`: bounded in-memory fetch cache (TTL 60s, LRU cap 200), cache key includes opts; SSRF guard hardened (decimal/hex/octal, mapped IPv6, 0.0.0.0); redirect `new URL` guarded; binary content handling; disk cache (cross-session, TTL 1h).
+- `bootstrap_session`: auto-consolidate memory default-on (`CORTEX_AUTO_CONSOLIDATE`), seed default exemplars.
 - `marker-block` idempotency fixed (compare stored `sha=` instead of whole-block hash).
 - `recall()` / `ingestText()`: re-acquire db handle after `await embedText` (no stale handle).
-- `cortex-auto` plugin honors `CORTEX_DB_DIR`.
+- `cortex-auto` plugin honors `CORTEX_DB_DIR`, injects LSP diagnostics summary.
 - Docs placeholder `D:/path/to/mcp-cortex-intelligent` → `~/mcp-cortex-intelligent`.
 - README/PLAN/CHANGELOG/docs synced to 62 tools / 260 checks.
+- Cognitive Guardian agent & Cognitive Procedure skill upgraded to v1.4.0 (anti-blunder 17 items, tier scaling, memory/knowledge, error handling, context management, browser accuracy, LSP).
+- `/init` and `/cortex` separated (no overlap): `/init` = onboarding, `/cortex` = quick session.
+- `/audit` expanded: comprehensive (clean up, fix, optimize, suggest, mojibake check, no-overlap/redundancy check).
+- `/verify` universal (toolchain-aware allowlist).
+- Anti-blunder checklist improved (debug statements, generated files, tool/flag checks, DB/auth, minimal diff).
+- `/cortex` and `/init` now sync session transcript into knowledge (prior Q&A searchable).
+- `/clean` added (universal cleanup).
+- `/update` added (pull latest from GitHub + build + verify).
+- `/review` added (diff + critique + verify).
+- `/doctor` added (setup diagnosis).
 
 ### Fixed
 - `bootstrap_session` `consolidate()` now awaited (no unhandled rejection).
-- `PLAN.md` stale "45 tools" → 61.
+- `PLAN.md` stale "45 tools" → 62.
 - `transcript.ts` comment `rag_search`/`rag_retrieve` → `knowledge_search`/`knowledge_retrieve`.
 - Stale `.bak-*` artifacts removed.
 - `/cortex.md` referenced unregistered `init_agents_md` → `init_agents` (+ `init_audit`).
+- Plugin no longer crashes when `ctx.storage` is unavailable.
+- Telemetry `telemetry` table: added `tool` column (`ALTER` migration) + `idx_telemetry_tool`; `recordToolCall` writes tool name; bounded table maintained.
+- `webfetch`: bounded in-memory fetch-cache (TTL 60s, LRU cap 200) + `webfetch_validate` stays SSRF-safe.
+- `bootstrap_session`: opt-in `CORTEX_AUTO_CONSOLIDATE=1` triggers memory consolidation (default-on).
+- Test suite split into per-module files (`src/test/modules/`: embedder, chunker, webfetch, telemetry, guardrails, self-critique); master `test-all.ts` preserved (260 checks verified).
+- `test-all.ts` mojibake (`???` → `✅`) fixed.
+- Graceful shutdown (SIGTERM/SIGINT → closeDB).
+- Incremental reindex (`skipIfUnchanged` opt-in).
 
 ### Security
 - SSRF guard normalized hostnames (decimal/hex/octal, IPv4-mapped IPv6).
