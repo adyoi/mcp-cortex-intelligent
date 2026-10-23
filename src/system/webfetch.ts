@@ -9,14 +9,56 @@
  *  - nothing is persisted unless the caller opts in with `ingest: true`
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 export const FETCH_TIMEOUT_MS = 20_000;
 export const MAX_FETCH_BYTES = 2_000_000;
 export const MAX_REDIRECTS = 3;
 export const DEFAULT_SNIPPET_CHARS = 2_000;
 export const FETCH_CACHE_TTL_MS = 60_000;
+export const FETCH_DISK_CACHE_TTL_MS = 3_600_000; // 1 hour for cross-session reuse
 
 const fetchCache = new Map<string, { result: unknown; ts: number }>();
 const CACHE_MAX = 200;
+
+const DISK_CACHE_FILE = path.join(
+  process.env.CORTEX_DB_DIR && (process.env.CORTEX_DB_DIR.startsWith("/") || /^[a-z]:/i.test(process.env.CORTEX_DB_DIR))
+    ? process.env.CORTEX_DB_DIR
+    : path.join(process.cwd(), process.env.CORTEX_DB_DIR || ".cortex-data"),
+  "fetch-cache.json"
+);
+
+function loadDiskCache(): void {
+  try {
+    if (!fs.existsSync(DISK_CACHE_FILE)) return;
+    const raw = fs.readFileSync(DISK_CACHE_FILE, "utf8");
+    const parsed = JSON.parse(raw) as Record<string, { result: unknown; ts: number }>;
+    const now = Date.now();
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v && typeof v.ts === "number" && now - v.ts < FETCH_DISK_CACHE_TTL_MS) {
+        fetchCache.set(k, v);
+      }
+    }
+  } catch { /* ignore corrupt cache */ }
+}
+
+let diskSaveTimer: NodeJS.Timeout | null = null;
+function scheduleDiskSave(): void {
+  if (diskSaveTimer) return;
+  diskSaveTimer = setTimeout(() => {
+    diskSaveTimer = null;
+    try {
+      const obj: Record<string, { result: unknown; ts: number }> = {};
+      for (const [k, v] of fetchCache) obj[k] = v;
+      fs.mkdirSync(path.dirname(DISK_CACHE_FILE), { recursive: true });
+      fs.writeFileSync(DISK_CACHE_FILE, JSON.stringify(obj));
+    } catch { /* ignore */ }
+  }, 1000);
+}
+
+// Load on module init
+loadDiskCache();
+
 
 const BLOCKED_HOST_PATTERNS = [
   /^localhost$/i,
@@ -268,6 +310,7 @@ export async function webFetch(rawUrl: string, opts: WebFetchOptions = {}): Prom
     elapsedMs: Date.now() - started,
   };
   fetchCache.set(cacheKey, { result, ts: Date.now() });
+  scheduleDiskSave();
   while (fetchCache.size > CACHE_MAX) {
     const oldest = fetchCache.keys().next().value as string | undefined;
     if (oldest === undefined) break;
@@ -275,3 +318,6 @@ export async function webFetch(rawUrl: string, opts: WebFetchOptions = {}): Prom
   }
   return result;
 }
+
+
+process.on("beforeExit", () => { try { const obj: Record<string, { result: unknown; ts: number }> = {}; for (const [k, v] of fetchCache) obj[k] = v; fs.mkdirSync(path.dirname(DISK_CACHE_FILE), { recursive: true }); fs.writeFileSync(DISK_CACHE_FILE, JSON.stringify(obj)); } catch { /* ignore */ } });
