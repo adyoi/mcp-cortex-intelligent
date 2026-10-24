@@ -86,7 +86,7 @@ async function getExtractor(): Promise<any> {
     // A failed model load must not be cached for the process lifetime: reset on
     // rejection so a transient network/first-download error can be retried.
     extractorPromise = (async () => {
-      // @ts-expect-error — @huggingface/transformers is an optional dependency
+      // @ts-ignore — @huggingface/transformers is an optional dependency
       const mod = await import("@huggingface/transformers");
       const { pipeline } = mod as { pipeline?: (task: string, model: string, opts?: Record<string, unknown>) => Promise<any> };
       if (typeof pipeline !== "function") {

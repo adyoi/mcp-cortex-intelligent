@@ -1,5 +1,5 @@
 /**
- * Headless browser check (two-way: server response + client rendering).
+ * Headless browser fetcher (two-way: server response + client rendering).
  *
  * Complements OpenCode's desktop browser tools (browser.*) by providing a
  * headless fallback that captures BOTH the server-side response (status,
@@ -10,9 +10,7 @@
  * Optional dependency: playwright or puppeteer.
  *   npm i playwright && npx playwright install chromium
  */
-import { spawnSync } from "node:child_process";
-
-export interface BrowserCheckResult {
+export interface BrowserFetchResult {
   available: boolean;
   url: string;
   finalUrl?: string;
@@ -29,18 +27,30 @@ export interface BrowserCheckResult {
 }
 
 export async function isBrowserAvailable(): Promise<boolean> {
-  try { await import("playwright"); return true; } catch {}
-  try { await import("puppeteer"); return true; } catch {}
+  try {
+    // @ts-ignore
+    await import("playwright");
+    return true;
+  } catch {}
+  try {
+    // @ts-ignore
+    await import("puppeteer");
+    return true;
+  } catch {}
   return false;
 }
 
-export async function browserCheck(url: string, opts: { timeoutMs?: number; maxChars?: number } = {}): Promise<BrowserCheckResult> {
+function isMissingBinary(msg: string): boolean {
+  return msg.includes("Executable doesn't exist") || msg.includes("Could not find Chromium") || msg.includes("ENOENT");
+}
+
+export async function browserFetch(url: string, opts: { timeoutMs?: number; maxChars?: number } = {}): Promise<BrowserFetchResult> {
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const maxChars = opts.maxChars ?? 2000;
 
   // Try playwright first
   try {
-    // @ts-expect-error — optional dependency
+    // @ts-ignore
     const pw = await import("playwright").catch(() => null);
     if (pw) {
       const browser = await pw.chromium.launch({ headless: true });
@@ -57,7 +67,10 @@ export async function browserCheck(url: string, opts: { timeoutMs?: number; maxC
 
       let response: any;
       try { response = await page.goto(url, { waitUntil: "networkidle", timeout: timeoutMs }); }
-      catch (e) { await browser.close(); return { available: true, url, ok: false, error: `navigation failed: ${(e as Error).message}`, console: consoleMsgs, network: networkReqs, pageErrors }; }
+      catch (e) {
+        await browser.close();
+        return { available: true, url, ok: false, error: `navigation failed: ${(e as Error).message}`, console: consoleMsgs, network: networkReqs, pageErrors };
+      }
 
       const title = await page.title();
       const text = await page.evaluate(() => document.body?.innerText ?? "");
@@ -79,12 +92,17 @@ export async function browserCheck(url: string, opts: { timeoutMs?: number; maxC
       };
     }
   } catch (e) {
-    // fall through to puppeteer
+    const msg = (e as Error)?.message ?? "";
+    if (isMissingBinary(msg)) {
+      // fall through to puppeteer
+    } else {
+      return { available: true, url, ok: false, error: `playwright failed: ${msg}` };
+    }
   }
 
   // Try puppeteer
   try {
-    // @ts-expect-error — optional dependency
+    // @ts-ignore
     const pp = await import("puppeteer").catch(() => null);
     if (pp) {
       const browser = await pp.launch({ headless: true });
@@ -101,7 +119,10 @@ export async function browserCheck(url: string, opts: { timeoutMs?: number; maxC
 
       let response: any;
       try { response = await page.goto(url, { waitUntil: "networkidle2", timeout: timeoutMs }); }
-      catch (e) { await browser.close(); return { available: true, url, ok: false, error: `navigation failed: ${(e as Error).message}`, console: consoleMsgs, network: networkReqs, pageErrors }; }
+      catch (e) {
+        await browser.close();
+        return { available: true, url, ok: false, error: `navigation failed: ${(e as Error).message}`, console: consoleMsgs, network: networkReqs, pageErrors };
+      }
 
       const title = await page.title();
       const text = await page.evaluate(() => document.body?.innerText ?? "");
@@ -123,8 +144,13 @@ export async function browserCheck(url: string, opts: { timeoutMs?: number; maxC
       };
     }
   } catch (e) {
-    // fall through
+    const msg = (e as Error)?.message ?? "";
+    if (isMissingBinary(msg)) {
+      // fall through to "not available"
+    } else {
+      return { available: true, url, ok: false, error: `puppeteer failed: ${msg}` };
+    }
   }
 
-  return { available: false, url, error: "No headless browser installed. Run: npm i playwright && npx playwright install chromium (or puppeteer). Falls back to webfetch + OpenCode desktop browser tools." };
+  return { available: false, url, error: "No headless browser installed (or browser binary missing). Run: npm i playwright && npx playwright install chromium. Falls back to webfetch + OpenCode desktop browser tools." };
 }
