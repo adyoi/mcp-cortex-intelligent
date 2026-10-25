@@ -29,11 +29,14 @@ export interface LspResult {
 }
 
 function detectStack(root: string): { language: string; command: string } {
+  const localTsc = path.join(root, "node_modules", ".bin", "tsc.cmd");
+  const tscBin = fs.existsSync(localTsc) ? `"${localTsc}"` : "npx tsc";
+  const tscCmd = `${tscBin} --noEmit --pretty false`;
   if (fs.existsSync(path.join(root, "tsconfig.json")) || fs.existsSync(path.join(root, "tsconfig.check.json"))) {
-    return { language: "typescript", command: "npx tsc --noEmit --pretty false" };
+    return { language: "typescript", command: tscCmd };
   }
   if (fs.existsSync(path.join(root, "package.json"))) {
-    return { language: "javascript", command: "npx tsc --noEmit --pretty false" };
+    return { language: "javascript", command: tscCmd };
   }
   if (fs.existsSync(path.join(root, "pyproject.toml")) || fs.existsSync(path.join(root, "requirements.txt"))) {
     return { language: "python", command: "python -m py_compile" };
