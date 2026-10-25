@@ -89,6 +89,32 @@ function tableColumns(db: DatabaseSync, table: string): Set<string> {
   }
 }
 
+/** Tables present in a database. */
+function tableNames(db: DatabaseSync): Set<string> {
+  try {
+    const rows = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as Array<{ name: string }>;
+    return new Set(rows.map((r) => r.name));
+  } catch {
+    return new Set();
+  }
+}
+
+type SchemaKind = "legacy" | "new";
+
+/** Detect which opencode schema a database uses. */
+function schemaKind(db: DatabaseSync): SchemaKind | null {
+  const tables = tableNames(db);
+  if (tables.has("session")) {
+    const cols = tableColumns(db, "session");
+    if (cols.has("id") && cols.has("directory") && cols.has("time_updated")) return "legacy";
+  }
+  if (tables.has("session_v2")) {
+    const cols = tableColumns(db, "session_v2");
+    if (cols.has("id") && cols.has("directory") && cols.has("time_updated")) return "new";
+  }
+  return null;
+}
+
 function assertOpencodeSchema(db: DatabaseSync, table: string, required: string[]): void {
   const cols = tableColumns(db, table);
   if (cols.size === 0) {
@@ -117,18 +143,48 @@ function openReadonly(dbPath: string): DatabaseSync {
 function querySessions(dbPath: string, limit: number): SessionRow[] {
   const db = openReadonly(dbPath);
   try {
-    assertOpencodeSchema(db, "session", ["id", "directory", "time_updated"]);
-    const cols = tableColumns(db, "session");
-    const archiveClause = cols.has("time_archived") ? "time_archived IS NULL AND" : "";
-    const parentClause = cols.has("parent_id") ? "parent_id IS NULL AND" : "";
-    const rows = db
-      .prepare(
-        `SELECT id, title, directory, time_updated FROM session
-          WHERE ${archiveClause} ${parentClause} title IS NOT NULL
-          ORDER BY time_updated DESC LIMIT ?`
-      )
-      .all(limit) as unknown as SessionRow[];
-    return rows.map((r) => ({ ...r, title: r.title ?? "", directory: r.directory ?? "" }));
+    const kind = schemaKind(db);
+    if (kind === "legacy") {
+      assertOpencodeSchema(db, "session", ["id", "directory", "time_updated"]);
+      const cols = tableColumns(db, "session");
+      const archiveClause = cols.has("time_archived") ? "time_archived IS NULL AND" : "";
+      const parentClause = cols.has("parent_id") ? "parent_id IS NULL AND" : "";
+      const titleSelect = cols.has("title") ? "title" : "NULL AS title";
+      const titleFilter = cols.has("title") ? "title IS NOT NULL AND" : "";
+      const rows = db
+        .prepare(
+          `SELECT id, ${titleSelect}, directory, time_updated FROM session
+            WHERE ${archiveClause} ${parentClause} ${titleFilter} 1=1
+            ORDER BY time_updated DESC LIMIT ?`
+        )
+        .all(limit) as unknown as SessionRow[];
+      return rows.map((r) => ({ ...r, title: r.title ?? "", directory: r.directory ?? "" }));
+    }
+    if (kind === "new") {
+      assertOpencodeSchema(db, "session_v2", ["id", "directory", "time_updated"]);
+      const cols = tableColumns(db, "session_v2");
+      const archiveClause = cols.has("time_archived") ? "time_archived IS NULL AND" : "";
+      const parentClause = cols.has("parent_id") ? "parent_id IS NULL AND" : "";
+      const titleSelect = cols.has("title") ? "title" : "NULL AS title";
+      const slugSelect = cols.has("slug") ? "slug" : "NULL AS slug";
+      const rows = db
+        .prepare(
+          `SELECT id, ${titleSelect}, ${slugSelect}, directory, time_updated FROM session_v2
+            WHERE ${archiveClause} ${parentClause} 1=1
+            ORDER BY time_updated DESC LIMIT ?`
+        )
+        .all(limit) as unknown as Array<SessionRow & { slug?: string | null }>;
+      return rows.map((r) => ({
+        ...r,
+        title: r.title ?? (r as { slug?: string | null }).slug ?? "",
+        directory: r.directory ?? "",
+      }));
+    }
+    // Unknown schema: treat as incompatible rather than throwing a partial result.
+    throw new Error(
+      "opencode DB schema changed: no supported session table (session/session_v2) found. " +
+        "Update cortex to a version matching your opencode."
+    );
   } finally {
     db.close();
   }
@@ -139,7 +195,14 @@ export function listOpenCodeSessions(
   limit = 15,
   opts: { directory?: string } = {}
 ): Array<{ id: string; title: string; directory: string; timeUpdated: number }> {
-  const rows = opencodeDbs().flatMap((p) => querySessions(p, Math.max(limit, 50)));
+  const rows: SessionRow[] = [];
+  for (const p of opencodeDbs()) {
+    try {
+      rows.push(...querySessions(p, Math.max(limit, 50)));
+    } catch {
+      // Skip incompatible/corrupt candidate DBs instead of aborting the whole probe.
+    }
+  }
   const seen = new Set<string>();
   const merged = rows
     .filter((r) => {
@@ -252,10 +315,20 @@ export function getSessionTranscript(sessionId: string, limit = 0): SessionEntry
 function sessionExists(dbPath: string, sessionId: string): boolean {
   const db = openReadonly(dbPath);
   try {
-    const row = db.prepare("SELECT 1 AS ok FROM session WHERE id = ?").get(sessionId) as
-      | { ok: number }
-      | undefined;
-    return row !== undefined;
+    const kind = schemaKind(db);
+    if (kind === "legacy") {
+      const row = db.prepare("SELECT 1 AS ok FROM session WHERE id = ?").get(sessionId) as
+        | { ok: number }
+        | undefined;
+      return row !== undefined;
+    }
+    if (kind === "new") {
+      const row = db.prepare("SELECT 1 AS ok FROM session_v2 WHERE id = ?").get(sessionId) as
+        | { ok: number }
+        | undefined;
+      return row !== undefined;
+    }
+    return false;
   } catch {
     return false;
   } finally {
@@ -267,38 +340,63 @@ function transcriptFromDb(dbPath: string, sessionId: string, limit: number): Ses
   const db = openReadonly(dbPath);
   const entries: SessionEntry[] = [];
   try {
-    assertOpencodeSchema(db, "message", ["id", "session_id", "time_created", "data"]);
-    assertOpencodeSchema(db, "part", ["message_id", "data"]);
+    const kind = schemaKind(db);
     const cap = limit > 0 ? limit : maxMessages();
-    const msgs = db
-      .prepare(
-        // json_valid() guards both sides: json_extract on a malformed blob raises
-        // "malformed JSON" and killed the whole read, so one corrupt part lost
-        // every other message in the session.
-        `SELECT id, time_created, data FROM message
-          WHERE session_id = ? AND json_valid(data)
-            AND json_extract(data, '$.role') = 'user'
-          ORDER BY time_created ASC
-          LIMIT ?`
-      )
-      .all(sessionId, cap) as Array<{ id: string; time_created: number; data: string }>;
-    // Pull only text parts in SQL — a session holds multi-MB image/tool blobs and
-    // parsing every one of them just to throw it away was the memory spike.
-    const partsStatement = db.prepare(
-      `SELECT json_extract(data, '$.text') AS text FROM part
-        WHERE message_id = ? AND json_valid(data)
-          AND json_extract(data, '$.type') = 'text'`
-    );
+    if (kind === "legacy") {
+      assertOpencodeSchema(db, "message", ["id", "session_id", "time_created", "data"]);
+      assertOpencodeSchema(db, "part", ["message_id", "data"]);
+      const msgs = db
+        .prepare(
+          `SELECT id, time_created, data FROM message
+            WHERE session_id = ? AND json_valid(data)
+              AND json_extract(data, '$.role') = 'user'
+            ORDER BY time_created ASC
+            LIMIT ?`
+        )
+        .all(sessionId, cap) as Array<{ id: string; time_created: number; data: string }>;
+      const partsStatement = db.prepare(
+        `SELECT json_extract(data, '$.text') AS text FROM part
+          WHERE message_id = ? AND json_valid(data)
+            AND json_extract(data, '$.type') = 'text'`
+      );
 
-    for (const m of msgs) {
-      if (limit > 0 && entries.length >= limit) break;
-      const texts: string[] = [];
-      for (const p of partsStatement.all(m.id) as Array<{ text: string | null }>) {
-        if (typeof p.text === "string" && p.text.trim()) texts.push(p.text);
+      for (const m of msgs) {
+        if (limit > 0 && entries.length >= limit) break;
+        const texts: string[] = [];
+        for (const p of partsStatement.all(m.id) as Array<{ text: string | null }>) {
+          if (typeof p.text === "string" && p.text.trim()) texts.push(p.text);
+        }
+        if (texts.length > 0) entries.push({ sessionId, ts: m.time_created, content: texts.join("\n") });
       }
-      if (texts.length > 0) entries.push({ sessionId, ts: m.time_created, content: texts.join("\n") });
+      return entries;
     }
-    return entries;
+    if (kind === "new") {
+      assertOpencodeSchema(db, "session_message", ["id", "session_id", "type", "time_created", "data"]);
+      const msgs = db
+        .prepare(
+          `SELECT id, time_created, data FROM session_message
+            WHERE session_id = ? AND type = 'user' AND json_valid(data)
+            ORDER BY seq ASC, time_created ASC
+            LIMIT ?`
+        )
+        .all(sessionId, cap) as Array<{ id: string; time_created: number; data: string }>;
+      for (const m of msgs) {
+        if (limit > 0 && entries.length >= limit) break;
+        let text = "";
+        try {
+          const o = JSON.parse(m.data) as { text?: unknown };
+          if (typeof o?.text === "string") text = o.text;
+        } catch {
+          /* malformed row - skip */
+        }
+        if (text.trim()) entries.push({ sessionId, ts: m.time_created, content: text.trim() });
+      }
+      return entries;
+    }
+    throw new Error(
+      "opencode DB schema changed: no supported message table found. " +
+        "Update cortex to a version matching your opencode."
+    );
   } finally {
     db.close();
   }

@@ -199,17 +199,30 @@ export function taskFromPlan(projectRoot: string): { created: number; ids: strin
   const planPath = path.join(projectRoot, "PLAN.md");
   if (!fs.existsSync(planPath)) return { created: 0, ids: [] };
   const lines = fs.readFileSync(planPath, "utf8").split(/\r?\n/);
-  // Collect bullet/numbered lines under a "Steps"/"Tasks"/"Plan" heading.
   const ids: string[] = [];
+  const seen = new Set<string>();
   let inSection = false;
+  let anySection = false;
+  // First pass: detect whether any relevant section exists.
   for (const raw of lines) {
     const line = raw.trim();
-    if (/^#{1,6}\s/.test(line)) { inSection = /step|task|plan|todo/i.test(line); continue; }
-    if (!inSection) continue;
-    const m = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
+    if (/^#{1,6}\s/.test(line) && /step|task|plan|todo|phase|milestone/i.test(line)) { anySection = true; break; }
+  }
+  let inCode = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line.startsWith("```")) { inCode = !inCode; continue; }
+    if (inCode) continue;
+    if (/^#{1,6}\s/.test(line)) { inSection = /step|task|plan|todo|phase|milestone/i.test(line); continue; }
+    // If no relevant section exists, treat all bullets as tasks.
+    const effective = anySection ? inSection : true;
+    if (!effective) continue;
+    const m = line.match(/^[-*+]\s+(.+)$/) || line.match(/^\d+[.)]\s+(.+)$/);
     if (!m) continue;
-    const title = m[1].trim();
+    const title = m[1].replace(/\[[ xX]\]\s*/, "").trim();
     if (title.length < 3) continue;
+    if (seen.has(title.toLowerCase())) continue;
+    seen.add(title.toLowerCase());
     const r = taskCreate(title, "PLAN.md");
     ids.push(r.id);
   }

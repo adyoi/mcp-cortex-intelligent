@@ -1186,6 +1186,30 @@ const codeChunked = chunkText("```ts\nconst a = 1;\n```\n\nplain paragraph after
   }
   check("ingest yields to the event loop during embedding", immediateCalls >= 8, `immediateCalls=${immediateCalls}`);
 
+  // --- 11f. CLI smoke (if built) ---------------------------------------------
+  const cliPath = path.join(process.cwd(), "dist", "cli.js");
+  if (fs.existsSync(cliPath)) {
+    try {
+      const { execFileSync } = await import("node:child_process");
+      const tmpDb = path.join(TEST_DB, "cli-smoke-db");
+      fs.mkdirSync(tmpDb, { recursive: true });
+      const out = execFileSync(process.execPath, [cliPath, "stats"], {
+        env: { ...process.env, CORTEX_DB_DIR: tmpDb },
+        encoding: "utf8",
+        timeout: 30_000,
+      });
+      check("CLI stats exits 0 and prints JSON", out.trim().startsWith("{"), out.slice(0, 80));
+    } catch (e) {
+      check("CLI stats exits 0 and prints JSON", false, (e as Error).message.slice(0, 120));
+    }
+  } else {
+    check("CLI smoke skipped (dist not built)", true, "run npm run build first");
+  }
+
+  // --- 11g. Plugin file presence ---------------------------------------------
+  const pluginPath = path.join(process.cwd(), ".opencode", "plugins", "cortex-auto", "index.ts");
+  check("plugin file exists", fs.existsSync(pluginPath), pluginPath);
+
   /* ================== 12. RESULTS ================== */
   console.log("\n=== RESULTS ===");
   console.log(`  Total:  ${passed + failed}`);

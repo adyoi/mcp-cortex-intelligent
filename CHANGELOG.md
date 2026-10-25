@@ -4,6 +4,31 @@ All notable changes to mcp-cortex-intelligent are documented here.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-25
+
+### Added
+- `src/model/registry.ts`: model profile registry backed by `model_profiles` table (lookup + seed-on-demand).
+- Persistence helpers in `src/db/database.ts`: `recordDecision`, `recordCognitiveScore`, `recordVerificationRun`, `upsertSessionState`, `incrementSessionCounter`, `cognitiveStats`.
+- `decision_classify` now returns heuristic risk/needsVerify and persists decisions.
+- `self_critique`, `run_verification`, `model_decision`, `bootstrap_session` persist scores/runs/decisions/session state.
+- `cognitive_status` exposes persistence counts.
+- LSP diagnostics: parsers for Python (`py_compile`) and Rust (`cargo check`).
+- CLI smoke test + plugin presence test in `test-all.ts` (262 checks).
+- `.env.example` / README: documented `CORTEX_VERIFY_CWD`, `CORTEX_LOG_LEVEL`, `KB_PRUNE`, `KB_VECTOR_CACHE_WARN_MB`, `KB_SESSION_MAX_MSGS`, `KB_SESSION_CONDENSE*`.
+
+### Changed
+- `get_model_profile` reads from the model registry (DB) instead of returning a stub.
+- `scoreCompliance` now detects secrets, missing verification commands, and reports issues.
+- `task_from_plan` improved (code-fence skip, dedup, broader section headings, fallback).
+- `browser_fetch` validates URL (SSRF guard) and cleans up browser handles via try/finally.
+- `listOpenCodeSessions` skips incompatible/corrupt opencode DBs instead of throwing.
+- `transcript.ts` supports both legacy and new opencode schemas (`session_v2` / `session_message`).
+- `browser_fetch` fallback response includes `available: false`.
+
+### Fixed
+- Test suite now passes on machines with a newer-schema opencode DB (was crashing at `listOpenCodeSessions`).
+- `browser_fetch` smoke test passes when no headless browser is installed.
+
 ## [1.0.1] - 2026-10-21
 
 ### Added

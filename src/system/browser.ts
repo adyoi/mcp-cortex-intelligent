@@ -10,6 +10,8 @@
  * Optional dependency: playwright or puppeteer.
  *   npm i playwright && npx playwright install chromium
  */
+import { validateUrl } from "./webfetch.js";
+
 export interface BrowserFetchResult {
   available: boolean;
   url: string;
@@ -48,6 +50,11 @@ export async function browserFetch(url: string, opts: { timeoutMs?: number; maxC
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const maxChars = opts.maxChars ?? 2000;
 
+  const v = validateUrl(url);
+  if (!v.ok) {
+    return { available: false, url, ok: false, error: v.error };
+  }
+
   // Try playwright first
   try {
     // @ts-ignore
@@ -55,6 +62,7 @@ export async function browserFetch(url: string, opts: { timeoutMs?: number; maxC
     if (pw) {
       const browser = await pw.chromium.launch({ headless: true });
       const page = await browser.newPage();
+      try {
       const consoleMsgs: Array<{ type: string; text: string }> = [];
       const networkReqs: Array<{ url: string; status: number; method: string }> = [];
       const pageErrors: string[] = [];
@@ -68,7 +76,7 @@ export async function browserFetch(url: string, opts: { timeoutMs?: number; maxC
       let response: any;
       try { response = await page.goto(url, { waitUntil: "networkidle", timeout: timeoutMs }); }
       catch (e) {
-        await browser.close();
+      // browser closed in finally
         return { available: true, url, ok: false, error: `navigation failed: ${(e as Error).message}`, console: consoleMsgs, network: networkReqs, pageErrors };
       }
 
@@ -90,6 +98,7 @@ export async function browserFetch(url: string, opts: { timeoutMs?: number; maxC
         network: networkReqs.slice(0, 30),
         pageErrors: pageErrors.slice(0, 10),
       };
+      } finally { await browser.close().catch(() => {}); }
     }
   } catch (e) {
     const msg = (e as Error)?.message ?? "";
@@ -107,6 +116,7 @@ export async function browserFetch(url: string, opts: { timeoutMs?: number; maxC
     if (pp) {
       const browser = await pp.launch({ headless: true });
       const page = await browser.newPage();
+      try {
       const consoleMsgs: Array<{ type: string; text: string }> = [];
       const networkReqs: Array<{ url: string; status: number; method: string }> = [];
       const pageErrors: string[] = [];
@@ -120,7 +130,7 @@ export async function browserFetch(url: string, opts: { timeoutMs?: number; maxC
       let response: any;
       try { response = await page.goto(url, { waitUntil: "networkidle2", timeout: timeoutMs }); }
       catch (e) {
-        await browser.close();
+      // browser closed in finally
         return { available: true, url, ok: false, error: `navigation failed: ${(e as Error).message}`, console: consoleMsgs, network: networkReqs, pageErrors };
       }
 
@@ -142,6 +152,7 @@ export async function browserFetch(url: string, opts: { timeoutMs?: number; maxC
         network: networkReqs.slice(0, 30),
         pageErrors: pageErrors.slice(0, 10),
       };
+      } finally { await browser.close().catch(() => {}); }
     }
   } catch (e) {
     const msg = (e as Error)?.message ?? "";

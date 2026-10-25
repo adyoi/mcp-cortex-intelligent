@@ -558,3 +558,71 @@ export function assertEmbedStateReady(): void {
     );
   }
 }
+// ------------------------------------------------------------------
+// Cognitive persistence helpers (P1)
+// ------------------------------------------------------------------
+export function recordDecision(kind: string, input: unknown, output: unknown, rationale: string, sessionId?: string): void {
+  const db = getDB();
+  db.prepare("INSERT INTO decisions (ts, session_id, kind, input, output, rationale) VALUES (?,?,?,?,?,?)").run(
+    Date.now(),
+    sessionId ?? null,
+    kind,
+    JSON.stringify(input ?? null),
+    JSON.stringify(output ?? null),
+    rationale ?? ""
+  );
+}
+
+export function recordCognitiveScore(kind: string, score: number, details: unknown, sessionId?: string): void {
+  const db = getDB();
+  db.prepare("INSERT INTO cognitive_scores (ts, session_id, kind, score, details) VALUES (?,?,?,?,?)").run(
+    Date.now(),
+    sessionId ?? null,
+    kind,
+    Number.isFinite(score) ? score : 0,
+    JSON.stringify(details ?? null)
+  );
+}
+
+export function recordVerificationRun(command: string, exitCode: number, summary: string, passed: boolean, sessionId?: string): void {
+  const db = getDB();
+  db.prepare("INSERT INTO verification_runs (ts, session_id, command, exit_code, summary, passed) VALUES (?,?,?,?,?,?)").run(
+    Date.now(),
+    sessionId ?? null,
+    command,
+    Number.isFinite(exitCode) ? exitCode : 1,
+    String(summary ?? "").slice(0, 2000),
+    passed ? 1 : 0
+  );
+}
+
+export function upsertSessionState(sessionId: string, projectRoot: string, model: string, tier: string, provisionedVersion: string): void {
+  const db = getDB();
+  db.prepare(
+    `INSERT INTO session_state (session_id, project_root, model, tier, provisioned_version, last_bootstrap, cognitive_calls, verification_runs, decision_calls)
+     VALUES (?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(session_id) DO UPDATE SET
+       project_root = excluded.project_root,
+       model = excluded.model,
+       tier = excluded.tier,
+       provisioned_version = excluded.provisioned_version,
+       last_bootstrap = excluded.last_bootstrap`
+  ).run(sessionId, projectRoot, model, tier, provisionedVersion, Date.now(), 0, 0, 0);
+}
+
+export function incrementSessionCounter(sessionId: string, field: "cognitive_calls" | "verification_runs" | "decision_calls"): void {
+  const db = getDB();
+  db.prepare("INSERT OR IGNORE INTO session_state (session_id, last_bootstrap) VALUES (?, ?)").run(sessionId, Date.now());
+  db.prepare(`UPDATE session_state SET ${field} = COALESCE(${field}, 0) + 1 WHERE session_id = ?`).run(sessionId);
+}
+
+export function cognitiveStats(): { decisions: number; cognitiveScores: number; verificationRuns: number; sessionStates: number } {
+  const db = getDB();
+  const q = (t: string) => (db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get() as { c: number }).c;
+  return {
+    decisions: q("decisions"),
+    cognitiveScores: q("cognitive_scores"),
+    verificationRuns: q("verification_runs"),
+    sessionStates: q("session_state"),
+  };
+}

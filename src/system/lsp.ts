@@ -82,6 +82,43 @@ function parseGoVet(output: string): Diagnostic[] {
   return out;
 }
 
+function parsePython(output: string): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  // py_compile: "Sorry: <Error>: <msg> (file.py, line N)" or "file.py:line: message"
+  const re1 = /Sorry:\s*(\w+Error|\w+Warning):\s*(.+?)\s*\((.+?),\s*line\s*(\d+)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re1.exec(output)) !== null) {
+    out.push({ file: m[3].trim(), line: Number(m[4]), severity: /warning/i.test(m[1]) ? "warning" : "error", code: m[1], message: m[2].trim() });
+  }
+  const re2 = /^(.+?):(\d+):\s*(.+)$/gm;
+  while ((m = re2.exec(output)) !== null) {
+    if (out.some((d) => d.file === m![1].trim() && d.line === Number(m![2]))) continue;
+    out.push({ file: m[1].trim(), line: Number(m[2]), severity: "error", message: m[3].trim() });
+  }
+  return out;
+}
+
+function parseRust(output: string): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  // cargo: "error[E0xxx]: message" then " --> file:line:col"
+  // Pair with preceding error line
+  const lines = output.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const lm = lines[i].match(/^(error|warning)(\[[^\]]*\])?:\s*(.+)$/);
+    if (!lm) continue;
+    // find next --> 
+    let file: string | undefined, line: number | undefined, col: number | undefined;
+    for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
+      const mm = lines[j].match(/-->\s*(.+?):(\d+):(\d+)/);
+      if (mm) { file = mm[1].trim(); line = Number(mm[2]); col = Number(mm[3]); break; }
+    }
+    if (file && line) {
+      out.push({ file, line, column: col, severity: lm[1] === "warning" ? "warning" : "error", code: lm[2]?.slice(1, -1), message: lm[3].trim() });
+    }
+  }
+  return out;
+}
+
 export function runLspDiagnostics(root: string, timeoutMs = 120_000): LspResult {
   const { language, command } = detectStack(root);
   if (!command) {
@@ -93,6 +130,8 @@ export function runLspDiagnostics(root: string, timeoutMs = 120_000): LspResult 
   let diagnostics: Diagnostic[] = [];
   if (language === "typescript" || language === "javascript") diagnostics = parseTsc(raw);
   else if (language === "go") diagnostics = parseGoVet(raw);
+  else if (language === "python") diagnostics = parsePython(raw);
+  else if (language === "rust") diagnostics = parseRust(raw);
   else diagnostics = []; // raw available for the agent to read
   return { language, command, ok, diagnostics, raw };
 }

@@ -66,6 +66,8 @@ Copy `.env.example` to `.env` and edit. Environment variables always win over th
 | CORTEX_TIER_OVERRIDE | (auto) | Override tier |
 | CORTEX_VERIFY_ALLOWLIST | npm test,npm run lint,npm run typecheck | Verification commands |
 | CORTEX_VERIFY_TIMEOUT_MS | 300000 | Verification timeout |
+| CORTEX_VERIFY_CWD | (project root) | Working directory for verification |
+| CORTEX_LOG_LEVEL | info | Log level (error/warn/info/debug) |
 | CORTEX_SELF_CRITIQUE_THRESHOLD | 0.8 | Revision threshold |
 | CORTEX_SELF_CRITIQUE_MAX_ITERS | 3 | Max self-critique iterations |
 | CORTEX_PROVISION_BACKUP | 1 | Backup before write |
@@ -74,6 +76,9 @@ Copy `.env.example` to `.env` and edit. Environment variables always win over th
 | EMBEDDING_MODEL | Xenova/all-MiniLM-L6-v2 | Embedding model |
 | SEARCH_MODE | hybrid | hybrid / vector / keyword |
 | KB_MEMORY_HALF_LIFE_DAYS | 14 | Memory decay half-life |
+| KB_PRUNE | 0 | Prune stale memories on consolidate |
+| KB_VECTOR_CACHE_WARN_MB | 256 | Vector cache warning threshold (MB) |
+| KB_SESSION_MAX_MSGS | 500 | Max session messages ingested |
 
 ### OpenCode registration
 

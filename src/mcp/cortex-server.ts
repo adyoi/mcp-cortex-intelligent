@@ -6,6 +6,14 @@ import * as path from "path";
 import { createRequire } from "node:module";
 import { STORAGE_DIR, closeDB, getEmbedState, storeHealthSummary } from "../db/database.js";
 import { backupStore } from "../db/database.js";
+import {
+  recordDecision,
+  recordCognitiveScore,
+  recordVerificationRun,
+  upsertSessionState,
+  incrementSessionCounter,
+  cognitiveStats,
+} from "../db/database.js";
 import { embeddingInfo } from "../knowledge/embeddings.js";
 import { reindex } from "../knowledge/reindex.js";
 import {
@@ -42,6 +50,7 @@ import { skillAutoBlock, skillPath, SKILL_VERSION } from "../provisioner/skill-g
 import { detectModel, tierOf } from "../model/resolver.js";
 import { modelDecision } from "../model/model-decision.js";
 import { getGuardrails } from "../model/guardrails.js";
+import { getModelProfile } from "../model/registry.js";
 import { selfCritique } from "../cognitive/self-critique.js";
 import { scoreCompliance } from "../cognitive/compliance.js";
 import { runVerification } from "../cognitive/verifier.js";
@@ -214,7 +223,7 @@ reg(
     if (!res.available) {
       // Fall back to webfetch (static HTML) when no headless browser is installed.
       const wf = await webFetch(args.url, { maxChars: args.max_chars ?? 2_000, timeoutMs: args.timeout_ms ?? 20_000 });
-      return { content: [{ type: "text", text: JSON.stringify({ fallback: "webfetch", ...wf }, null, 2) }] };
+      return { content: [{ type: "text", text: JSON.stringify({ available: false, fallback: "webfetch", ...wf }, null, 2) }] };
     }
     return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
   }
@@ -674,6 +683,7 @@ reg(
     provision(agentPath(args.project_root), agentAutoBlock(), AGENT_VERSION);
     provision(skillPath(args.project_root), skillAutoBlock(), SKILL_VERSION);
     pt.initAgents(args.project_root);
+    try { upsertSessionState(args.project_root, args.project_root, model, tier, AGENT_VERSION); } catch { /* ignore */ }
     // Seed default exemplars on first bootstrap (idempotent).
     try { const { seedDefaultExemplars } = await import("../cognitive/exemplars.js"); await seedDefaultExemplars(); } catch { /* seeding must not break bootstrap */ }
     if (process.env.CORTEX_AUTO_CONSOLIDATE !== "0") {
@@ -682,6 +692,7 @@ reg(
         await consolidate();
       } catch { /* consolidation must not break bootstrap */ }
     }
+    try { recordDecision("bootstrap", { project_root: args.project_root }, { model, tier, decision: md }, "rule-based", args.project_root); } catch { /* ignore */ }
     return { content: [{ type: "text", text: JSON.stringify({ model, tier, decision: md, provisioned: true }) }] };
   }
 );
@@ -733,11 +744,14 @@ reg(
 
 reg(
   "get_model_profile",
-  { description: "Get model profile (tier, capabilities).", inputSchema: { model: z.string().min(1) } },
+  { description: "Get model profile (tier, capabilities, blunder patterns) from the registry.", inputSchema: { model: z.string().min(1) } },
   async (args: { model: string }) => {
-    return { content: [{ type: "text", text: JSON.stringify({ model: args.model, tier: tierOf(args.model), capabilities: {} }) }] };
+    const profile = getModelProfile(args.model);
+    return { content: [{ type: "text", text: JSON.stringify(profile) }] };
   }
 );
+
+// listModelProfiles() available via src/model/registry.ts for internal/CLI use.
 
 reg(
   "set_model",
@@ -762,7 +776,10 @@ reg(
   { description: "Internal model decision: tier/risk/route/needsVerify.", inputSchema: { model: z.string().optional(), task: z.string().min(1), files: z.array(z.string()).optional(), project_root: z.string().max(MAX_PATH).optional() } },
   async (args: { model?: string; task: string; files?: string[]; project_root?: string }) => {
     const m = args.model ?? detectModel({ env: process.env, projectRoot: args.project_root });
-    return { content: [{ type: "text", text: JSON.stringify(modelDecision(m, args.task, args.files ?? [])) }] };
+    const out = modelDecision(m, args.task, args.files ?? []);
+    try { recordDecision("model_decision", { model: m, task: args.task, files: args.files ?? [] }, out, "rule-based", args.project_root); } catch { /* persistence must not break the call */ }
+    if (args.project_root) { try { incrementSessionCounter(args.project_root, "decision_calls"); } catch { /* ignore */ } }
+    return { content: [{ type: "text", text: JSON.stringify(out) }] };
   }
 );
 
@@ -822,7 +839,9 @@ reg(
   "self_critique",
   { description: "Structured self-critique (weighted checklist + scoring + severity + verdict) without LLM.", inputSchema: { artifact: z.string().min(1), tier: z.enum(["weak", "medium", "strong"]).optional() } },
   async (args: { artifact: string; tier?: "weak" | "medium" | "strong" }) => {
-    return { content: [{ type: "text", text: JSON.stringify(selfCritique(args.artifact, { tier: args.tier })) }] };
+    const out = selfCritique(args.artifact, { tier: args.tier });
+    try { recordCognitiveScore("self_critique", out.score, out, undefined); } catch { /* persistence must not break the call */ }
+    return { content: [{ type: "text", text: JSON.stringify(out) }] };
   }
 );
 
@@ -843,6 +862,10 @@ reg(
     const cwd = args.cwd ?? process.env.CORTEX_VERIFY_CWD ?? process.cwd();
     const timeout = args.timeout_ms ?? Number(process.env.CORTEX_VERIFY_TIMEOUT_MS ?? 300000);
     const res = runVerification(cmds, cwd, timeout);
+    for (const r of res) {
+      try { recordVerificationRun(r.cmd, r.exitCode, r.summary, r.passed, cwd); } catch { /* ignore */ }
+    }
+    try { incrementSessionCounter(cwd, "verification_runs"); } catch { /* ignore */ }
     return { content: [{ type: "text", text: JSON.stringify(res) }] };
   }
 );
@@ -855,7 +878,9 @@ reg(
   "decision_classify",
   { description: "Internal decision classification (tier/risk/route/compliance).", inputSchema: { state: z.string().min(1), questions: z.any() } },
   async (args: { state: string; questions: any }) => {
-    return { content: [{ type: "text", text: JSON.stringify(decisionClassify(args)) }] };
+    const out = decisionClassify(args);
+    try { recordDecision("decision_classify", args, out, out.rationale ?? "rule-based", undefined); } catch { /* ignore */ }
+    return { content: [{ type: "text", text: JSON.stringify(out) }] };
   }
 );
 
@@ -873,7 +898,8 @@ reg(
   async (args: { project_root?: string }) => {
     const model = detectModel({ env: process.env, projectRoot: args.project_root });
     const ts = (await import("../plantask/manager.js")).taskSummary();
-    return { content: [{ type: "text", text: JSON.stringify({ model, tier: tierOf(model), status: "ok", tasks: ts }) }] };
+    const stats = cognitiveStats();
+    return { content: [{ type: "text", text: JSON.stringify({ model, tier: tierOf(model), status: "ok", tasks: ts, persistence: stats }) }] };
   }
 );
 
