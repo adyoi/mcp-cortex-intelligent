@@ -54,3 +54,16 @@ const envFile = process.env.CORTEX_ENV_FILE ?? path.join(process.cwd(), ".env");
 if (process.env.CORTEX_ENV_FILE || fs.existsSync(envFile)) {
   loadDotenv(envFile);
 }
+
+// Ensure the node toolchain is discoverable by child processes (verifier, LSP, etc.)
+// even when the host (e.g. OpenCode) did not put node on PATH.
+try {
+  const nodeDir = path.dirname(process.execPath);
+  const sep = process.platform === "win32" ? ";" : ":";
+  const current = process.env.PATH ?? "";
+  if (!current.split(sep).some((d) => d.toLowerCase() === nodeDir.toLowerCase())) {
+    process.env.PATH = nodeDir + sep + current;
+  }
+} catch {
+  /* ignore */
+}
