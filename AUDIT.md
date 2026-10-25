@@ -44,3 +44,68 @@ All findings above are fixed in commits through `d9411da` + this audit pass. Ver
 - GitHub Pages deployment may still be "in progress" (GitHub infra) — code/docs already pushed.
 - `npm publish` skipped per user instruction (release v1.0.0 created without publish).
 - `init_audit` tool requires OpenCode MCP server restart to load new dist (source + dist verified correct).
+
+## Suggestions (from /init, 2026-10-25)
+
+### P1
+- src/model/registry.ts: implement listModelProfiles MCP tool if agents need to enumerate profiles (currently internal only).
+- src/decision/internal.ts: add oute/compliance classification mirroring modelDecision so decision_classify is useful standalone.
+- src/mcp/cortex-server.ts: persist session_state per real session id (currently keyed by project_root) once a session id is available.
+- src/db/database.ts: add PRAGMA/migration test for column additions beyond 	elemetry.tool.
+
+### P2
+- src/test/test-all.ts: add subprocess CLI tests for all commands (currently smoke-only for stats).
+- src/system/lsp.ts: add parsers for ruff (Python) and cargo clippy (Rust); currently raw only.
+- src/plantask/manager.ts:taskFromPlan: handle nested checkboxes and indented sub-tasks.
+- src/system/browser.ts: optional CDP attach to a running Chrome for JS-rendered pages when playwright is absent.
+- docs/index.html: add a "Changelog" section linking to CHANGELOG.md.
+- scripts/setup-clients.mjs: add --dry-run flag to preview config changes.
+
+### P3
+- CI: GitHub Actions for typecheck/lint/build/test on PR + publish on tag.
+- Add property-based tests (fast-check) for chunker and vector search.
+- Streaming/batched ingest for large directories.
+
+## Findings (/audit run, 2026-10-25)
+
+### Checks
+- 
+pm run typecheck ?o. (0 errors)
+- 
+pm run lint ?o. (0 warnings)
+- 
+pm run build ?o.
+- 
+pm test ?o. (262/262)
+- lsp_diagnostics ?o. (0 TS errors, via node + tsc.js)
+- Banned words in docs/ : none (public docs clean).
+- Mojibake (U+FFFD): only in udit.md/clean.md as intentional examples ??" not real mojibake.
+
+### Security
+- SSRF guard present (webfetch.ts:isBlockedHost, alidateUrl); browser_fetch now validates too.
+- No secrets stored (verified).
+- Verification runner uses allowlist + locked cwd + timeout.
+
+### Performance
+- Vector cache uncapped by design (warning threshold KB_VECTOR_CACHE_WARN_MB).
+- knowledge_search brute-force O(N) (acceptable for personal scale).
+- listOpenCodeSessions skips incompatible DBs (no crash).
+
+### Dead code / redundancy
+- No duplicate tool registrations (62 unique).
+- model/registry.ts and decision/internal.ts now implemented (were stubs).
+- Unused persistence tables now wired (decisions, cognitive_scores, verification_runs, session_state).
+
+### Docs drift
+- README + .env.example synced with new env vars.
+- Tool count 62 consistent across README/docs/index.html/cortex-server.
+
+## Fixed (this audit pass)
+- src/system/lsp.ts: invoke tsc via node (npx not on PATH).
+- src/system/browser.ts: SSRF validation + try/finally cleanup.
+- src/session/transcript.ts: multi-schema opencode support.
+- scripts/setup-clients.mjs: absolute node path.
+- All P1/P2 items from prior pass.
+
+## Suggestions
+See previous Suggestions section (P1/P2/P3). No new critical findings.
