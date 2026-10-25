@@ -4,6 +4,7 @@
   <img src="assets/logo.svg" alt="mcp-cortex-intelligent logo" width="120"/>
 </p>
 
+[![CI](https://github.com/adyoi/mcp-cortex-intelligent/actions/workflows/ci.yml/badge.svg)](https://github.com/adyoi/mcp-cortex-intelligent/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/mcp-cortex-intelligent)](https://www.npmjs.com/package/mcp-cortex-intelligent)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D22.12-green.svg)](https://nodejs.org)
