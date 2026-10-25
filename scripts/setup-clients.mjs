@@ -4,9 +4,13 @@ import * as os from "os";
 
 const ROOT = path.resolve(process.cwd());
 const ROOT_FWD = ROOT.replace(/\\/g, "/");
+// Use the absolute path to the node binary that is running this script: many
+// environments (including OpenCode) do not have `node` on PATH, which would
+// otherwise make the MCP server fail to start with "'node' is not recognized".
+const NODE_BIN = process.execPath.replace(/\\/g, "/");
 
-const ENTRY_MCP = { type: "local", command: ["node", ROOT_FWD + "/dist/index.js"], cwd: ROOT_FWD, environment: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
-const ENTRY_MCP_SERVERS = { command: "node", args: [ROOT_FWD + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
+const ENTRY_MCP = { type: "local", command: [NODE_BIN, ROOT_FWD + "/dist/index.js"], cwd: ROOT_FWD, environment: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
+const ENTRY_MCP_SERVERS = { command: NODE_BIN, args: [ROOT_FWD + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
 
 function mergeJson(p, mutate) {
   let obj = {};
@@ -135,7 +139,7 @@ const zedPath = platform === "win32"
   : path.join(home, ".config", "zed", "settings.json");
 mergeJson(zedPath, (o) => {
   o.context_servers = o.context_servers || {};
-  o.context_servers.cortex = { command: "node", args: [ROOT_FWD + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
+  o.context_servers.cortex = { command: NODE_BIN, args: [ROOT_FWD + "/dist/index.js"], env: { CORTEX_DB_DIR: ROOT_FWD + "/.cortex-data" } };
 });
 
 console.log("\nDone. Restart each client to load MCP Cortex.");
