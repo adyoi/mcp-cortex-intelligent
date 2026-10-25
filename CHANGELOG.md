@@ -4,6 +4,11 @@ All notable changes to mcp-cortex-intelligent are documented here.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-25
+
+### Fixed
+- Client configs now use the absolute path to the `node` binary. On systems where `node` is not on `PATH` (common on Windows), the MCP server failed to start with "'node' is not recognized".
+
 ## [1.1.0] - 2026-10-25
 
 ### Added

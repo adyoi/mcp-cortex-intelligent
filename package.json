@@ -1,6 +1,6 @@
 {
   "name": "mcp-cortex-intelligent",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Cortex Intelligent MCP server: make ordinary LLMs smarter via offline cognitive augmentation. No API keys.",
   "type": "module",
   "engines": {
